@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xml>
+<odoo>
+    <data>
+
+        <record model="ir.ui.view" id="subscription_formxfvv">
+                <field name="name">subscription</field>
+                <field name="model">subscription.model</field>
+                <field name="priority">50</field>
+                <field name="arch" type="xml">
+                    <form string="Subscription ">   
+                                <header>
+                                    <button name="button_subscribe" string='Renew' type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': [('state','not in',['draft'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" 
+        />
+
+                                    <button name="button_anamoly" string="Anomaly" type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': ['|',('p_type', 'not in', ['ano']),('state','not in',['suscription','done'])]}" groups="base.group_system,member_app.manager_member_ikoyi"/>
+
+                                    <button name="send_Finmanager_Fine" string="Confirm Anomaly" type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': [('state','not in',['manager_approve'])]}" groups="base.group_system,ikoyi_module.account_boss_ikoyi"/>
+                                    
+                                     <button name="payment_button_normal" string="Register Payment" type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': [('state','not in',['done','fined','suscription'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
+
+                                    <field name="state" widget="statusbar" statusbar_visible="draft,suscription,done,fined"/>
+                                </header>
+                        <sheet>
+                           
+                        <!-- <field name="image" widget="image" class="oe_avatar"/>-->
+                            <label for="Name" class="oe_edit_only"/>
+                            <h1>
+                                <field name="partner_id" default_focus="1" placeholder="Name" options="{'limit': 1}"/>
+                            </h1>
+                        <group colspan= "2" attrs="{'readonly': [('state','not in',['draft'])]}">
+                            <group>
+                                <field name="member_id" />
+                                <field name="email" widget="email" />
+                                <field name="account_id" options="{&quot;no_open&quot;: True}" />
+                                <field name="identification"/>                      
+                            </group>
+                            <group>
+                                <field name="date" string="Request Date"/>
+                                
+                                <field name="users_followers" widget="many2many_tags"/>
+                                <field name="periods_month"/>
+                                <field name="p_type" widget="radio" options ="{'horizontal':true}"/>
+                                
+                                <field name="total"/>
+                                    
+                            </group>
+                        </group>
+
+                        <notebook colspan="4">
+                                    
+
+                            <page name="section_package" string="Sections">
+                                <field name="subscription" readonly="0" attrs="{'readonly': [('state', '!=', 'draft')]}">
+                                <p style="color: red;">* See Sections</p>
+                                <tree string="Sections" editable="bottom">
+                                    <field name="name"/>
+                                    <field name="member_price" string = "subscription Amount"/>                               
+                                    <field name="subscription_period" string="Subscription Period"/>
+                                    <field name="pdate" string="Date"/>
+                                </tree>
+                                </field>
+                                <separator string="Packages" colspan="4"/>
+                                <field name="package" readonly="0">
+                                <p style="color: red;">* See Payments</p>
+                                <tree string="Packages" editable="bottom">
+                                <field name="name"/>
+                                    <field name="package_cost" string = "Package Amount"/>                               
+                                    <field name="subscription_period" string="Subscription Period"/>
+                                    <field name="pdate" string="Date"/>
+                                    
+                                </tree>
+                                </field>
+                            </page>
+
+                        </notebook>
+
+                    </sheet>
+                    </form>
+                </field>
+            </record>
+            <record model="ir.ui.view" id="subscription_maintreex">
+                <field name="name">Subscription</field>
+                <field name="model">subscription.model</field>
+                <field name="priority">50</field>
+                <field name="arch" type="xml">
+                    <tree string="Section">
+                            <field name="partner_id"/>
+                                    <field name="member_id"/>
+                                <field name="email" widget="email" />
+                                
+                                <field name="identification"/>  
+                                <field name="date"/>
+                                
+                                <field name="subscription" widget="many2may_tags"/>
+                                <field name="periods_month" string="Renewal Period"/>
+                                <field name="total"/>
+                                
+                    </tree>
+                </field>
+            </record>
+
+
+
+        <act_window id="subscription_main_action_main"
+            name="Subscription"
+            res_model="subscription.model"
+            domain="[]"
+            view_mode="tree,form"/>
+
+        <menuitem id ="menu_memapp_subscription" name="Subscription Renewal" parent="member_app.menu_memapp_all" sequence="5" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
+              <menuitem id ="menu_subs_member" name="Subscription" sequence="1" parent="menu_memapp_subscription" action="subscription_main_action_main"/>
+        
+
+</data>
+ </odoo>
