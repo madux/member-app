@@ -17,6 +17,7 @@ TYPE2JOURNAL = {
 
 class Account_payment(models.Model):
     _inherit = "account.payment"
+    _order = "id desc"
 
     member_id = fields.Many2one('member.app', string="Payment Ref")
     filex = fields.Binary("Evidence of Payment")
@@ -48,6 +49,13 @@ class App_Member(models.Model):
                        'function': vals.get('occupation')})
         #  partner.write({'is_member':True})
         return res
+
+    @api.constrains('depend_name')
+    def _check_dependant(self):
+        if self.state in ['white', 'draft', 'issue_green', 'green', 'wait', 'interview']:
+            for rec in self:
+                if len(rec.depend_name) > 1:
+                    raise ValidationError('Spouse at this stage cannot be more than one')
 
     @api.model
     def _needaction_domain_get(self):
@@ -311,7 +319,7 @@ class App_Member(models.Model):
     date_of_temp = fields.Datetime('Date of Temp. Confirmation')
     
     coffee = fields.Boolean('Coffee Fee', default=True)
-    main_house_cost = fields.Float('Main House Fee', default = 500000.00, required=True)
+    main_house_cost = fields.Float('Main House Fee', required=True)
     state = fields.Selection([('draft', 'Draft'),
                               ('white', 'White Prospect'),
                               ('wait', 'Waiting List'),
@@ -347,18 +355,6 @@ class App_Member(models.Model):
     binary_attach_interview = fields.Binary('Attach Upload Report')
     binary_fname_interview = fields.Char('Interview Report')
     
-    
-
-    @api.onchange('activity')
-    def change_member_active_status(self):
-        for rec in self:
-            if rec.activity == "act":
-                rec.active = True
-            elif rec.activity == "inact":
-                rec.active = False
-            elif rec.activity == "dom":
-                rec.active = False
-
     @api.onchange('subscription_period')
     def get_all_packages(self):
         for rex in self:
@@ -371,30 +367,29 @@ class App_Member(models.Model):
             rex.package = [(6, 0, appends)]
 
 #  calculate package cost
+    @api.one
     @api.depends('package')
     def get_package_cost(self):
         total = 0.0
-        for rec in self:
-            for rep in rec.package:
-                total += rep.package_cost
-            rec.package_cost = total
+        for rec in self.package:
+            total += rec.package_cost
+        self.package_cost = total
      
 #  Calculates subscription cost
+    @api.one
     @api.depends('subscription')
     def get_section_member_price(self):
         total = 0.00
-        for rex in self:
-            for rec in rex.subscription:
-                total += rec.member_price
-            rex.member_price = total
+        for rex in self.subscription:
+            total += rex.member_price
+        self.member_price = total
 
 #  Total of main house + subscription + packaget cost
     @api.one
     @api.depends('member_price', 'package_cost', 'main_house_cost')
     def get_totals(self):
         total = 0.00
-        for rex in self:
-            rex.total = rex.member_price + rex.package_cost + rex.main_house_cost
+        self.total = self.member_price + self.package_cost + self.main_house_cost
 
     @api.depends('member_price', 'package_cost')
     def get_totals_sub(self):
@@ -423,6 +418,39 @@ class App_Member(models.Model):
                 ends = datetime.strptime(end, server_dt)
                 durations = ends - strt
                 rec.duration_pick = durations.days
+    
+    @api.model
+    def _run_cron(self):
+        return self.run_crons()           
+    #@api.multi
+    def run_crons(self):
+        
+        for rec in self:
+            
+            current_date = fields.Date.today()
+            #last_dates = fields.Datetime.now
+            for date in rec.payment_line2:
+                last_date = date[-1].pdate
+            if current_date and last_date:
+                # raise ValidationError("The date is {}".format(last_date))
+                server_dt = DEFAULT_SERVER_DATETIME_FORMAT
+                start = datetime.strptime(last_date, '%Y-%m-%d')
+                end = datetime.strptime(current_date,'%Y-%m-%d')
+                diff = end - start
+                duration = diff.days#/365
+                if duration in range(4,5): # and self.state == "ord"
+                    # rec.activity = "act"
+                    rec.write({'activity': "inact"})# "active":False})
+                    #raise ValidationError("The date is {}".format(last_date))
+                elif duration > 5:
+                    rec.write({'activity': "dom"})#, "active": False})
+                    # self.activity = "dom"
+                    #raise ValidationError("The date is --- {}".format(last_date))
+                else:
+                    rec.write({'activity': "act"})
+                    
+                
+            
 
     @api.multi
     @api.depends('date_green_pickup')
@@ -469,13 +497,14 @@ class App_Member(models.Model):
             'context': {
                 'default_payment_type': "outbound",
                 'default_date': fields.Datetime.now(),
-                'default_amount': amount,  #  self.int_form_price,
+                'default_amount': amount, #  self.int_form_price,
                 'default_member_id': self.id,
                 'default_partner_id': self.partner_id.id,
                 'default_member_ref': self.id,
                 'default_name': "Member Payments",
                 'default_level': level,
-                'default_to_pay': amount
+                'default_to_pay': amount,
+                'default_num':self.id,
 
                 #  'default_communication':self.number
             },
@@ -484,9 +513,8 @@ class App_Member(models.Model):
     @api.multi
     def button_register_spouse(self):  #  Send memo back
         lists = []
-        for rec in self:
-            for fec in rec.subscription:
-                lists.append(fec.id)
+        for rec in self.subscription:
+            lists.append(rec.id)
         return {
             'name': "Register Dependant",
             'view_type': 'form',
@@ -524,16 +552,18 @@ class App_Member(models.Model):
 
     @api.multi
     def button_confirm_white_delay_payments(self):  #  state draft
-        if not self.date_pickup:
-            self.date_pickup = fields.Datetime.now()
+        #self.date_pickup = fields.Datetime.now()
         name = "Form Delay Payment Fee" or "{} Payment".format(
             str(self.state).upper())
         self.write({'payment_status': 'open'})
 
         amount = self.delay_charges
         level = 'wait'
-        #  self.sendmail_white_confirm()
-        return self.button_payments(name, amount, level)
+        if self.delay_charges > 0.00:
+            return self.button_payments(name, amount, level)
+        
+        else:
+            raise ValidationError('There is no penalty fee for this member')
 
     def sendmail_white_confirm(self, force=False):
         email_from = self.env.user.company_id.email
@@ -543,13 +573,17 @@ class App_Member(models.Model):
         extra = self.email
         bodyx = "Dear Sir/Madam, </br>We wish to notify that you have been issued a white prospect Card on the date: {}.</br>\
              </br> Please Endure to submit the card on or before the range of 3 months of the pickup date.</br>\
-             Kindly contact the Ikoyi Club 1968 for further enquires </br> Thanks".format(fields.Datetime.now())
+             Kindly contact the Ikoyi Club 1938 for further enquires </br> Thanks".format(fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
     @api.one
     def button_send_interview(self):  #  state wait
-        self.write({'state': 'interview'})
-        self.send_one_interview()
+        if self.date_of_interview == False:
+            raise ValidationError('Please you must set Date of Interview')
+            
+        else:
+            self.write({'state': 'interview'})
+            self.send_one_interview()
 
     def send_one_interview(self, force=False):
         email_from = self.env.user.company_id.email
@@ -557,9 +591,9 @@ class App_Member(models.Model):
         # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
         extra = self.email
         #  .format(fields.Datetime.now())
-        bodyx = "Dear Sir/Madam, </br>We wish to notify that you have been shortlisted for an interview at Ikoyi Club 1968.</br>\
+        bodyx = "Dear Sir/Madam, </br>We wish to notify that you have been shortlisted for an interview at Ikoyi Club 1938.</br>\
                 </br>.</br>\
-                Kindly contact the Ikoyi Club 1968 for more enquires </br> Thanks"
+                Kindly contact the Ikoyi Club 1938 for more enquires </br> Thanks"
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
     @api.multi
@@ -577,9 +611,9 @@ class App_Member(models.Model):
             # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
             extra = rec.email
             bodyx = "Dear Sir/Madam, </br>We wish to notify that you have \
-             been shortlisted for an interview at Ikoyi Club 1968.</br>\
+             been shortlisted for an interview at Ikoyi Club 1938.</br>\
                 </br>Interview Dated is {}.</br>\
-                Kindly contact the Ikoyi Club 1968 for \
+                Kindly contact the Ikoyi Club 1938 for \
                  more enquires </br> Thanks".format(rec.date_of_interview)
             rec.mail_sending(email_from, group_user_id, extra, bodyx)
     
@@ -592,7 +626,7 @@ class App_Member(models.Model):
         bodyx = "Dear Sir/Madam, </br>We wish to notify \
         that you have been promoted to a Green prospect\
         membership on the date: {}.</br>\
-        Kindly contact the Ikoyi Club 1968 for further \
+        Kindly contact the Ikoyi Club 1938 for further \
         enquires </br> Thanks".format(fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
@@ -634,10 +668,13 @@ class App_Member(models.Model):
                     str(order.state).upper())
             
             order.write(
+                {
+                 'date_issue_green': fields.Datetime.now()})
+            '''order.write(
                 {'payment_line': [(0, 0, values)], 
                  'payment_line2': [(0, 0, values)],
                  'date_issue_green': fields.Datetime.now()})
-            
+            '''
             self.send_mail_green(name)
             
             return self.button_payments(name, amount, level)
@@ -665,6 +702,7 @@ class App_Member(models.Model):
         the system brings out payment
         
         """
+        popup_message = "Hurray!!!... There is no penalty charge for the member"
         penalty = 15000
         for order in self:
             product = 0
@@ -699,15 +737,32 @@ class App_Member(models.Model):
                     'penalty_fee': self.penalty_charges
                 }
                 level = 'green'
-                order.write({'payment_line': [(0, 0, values)], 'payment_line2': [
-                            (0, 0, values)], 'payment_status': 'gpaid'})
+                '''order.write({'payment_line': [(0, 0, values)], 'payment_line2': [
+                            (0, 0, values)], 'payment_status': 'gpaid'})'''
+                order.write({'payment_status': 'gpaid'})
+                            
                 name = "Green Card Payment Fee" or "{} Payment Fee".format(
                     str(order.state).upper())
                 self.send_mail_green(name)
                 return self.button_payments(name, amount, level)
             elif total_duration < 30:
                 order.write({'state': 'green'})
-                 
+                return self.popup_notification(popup_message)
+                
+    def popup_notification(self,popup_message):
+        view = self.env.ref('sh_message.sh_message_wizard')
+        view_id = view and view.id or False
+        context = dict(self._context or {})
+        context['message'] = popup_message # 'Successful'
+        return {'name':'Checking Alert',
+                    'type':'ir.actions.act_window',
+                    'view_type':'form',
+                    'res_model':'sh.message.wizard',
+                    'views':[(view.id, 'form')],
+                    'view_id':view.id,
+                    'target':'new',
+                    'context':context,
+                }         
     @api.multi
     def send_mail_green(self, name,force=False):
         email_from = self.env.user.company_id.email
@@ -716,7 +771,7 @@ class App_Member(models.Model):
         extra = self.email
         amount = self.green_form_price + 10000
         bodyx = "Dear Sir/Madam, </br>We wish to notify that a {} Card payment of N-{} have been made on the date: {}.</br>\
-             Kindly contact the Ikoyi Club 1968 for any further enquires </br> Thanks".format(name, amount, fields.Datetime.now())
+             Kindly contact the Ikoyi Club 1938 for any further enquires </br> Thanks".format(name, amount, fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
     @api.multi
@@ -742,41 +797,39 @@ class App_Member(models.Model):
             else:
                 payment_add = 0.0
 
-        for fec in self: 
-            search_mem = self.env['register.spouse.member'].search(
+        search_mem = self.env['register.spouse.member'].search(
                 [('partner_id', '=', self.partner_id.id)])
-            if search_mem:
-                level = "temp"
-                for xec in search_mem:
-                    if xec.mode == "jun":
-                        percent = 50 / 100
-                        discount = fec.main_house_cost * percent
-                        amount = discount + fec.total + payment_add \
+        if search_mem:
+            level = "temp"
+            for xec in search_mem:
+                if xec.mode == "jun":
+                    percent = 50 / 100
+                    discount = self.main_house_cost * percent
+                    amount = discount + self.total + payment_add \
                          # fec.member_price + payment_add + fec.package_cost
-                        fec.write(
+                    self.write(
                             {'main_house_cost': discount, 'total': amount})
-                        self.send_mail_temp()
-                        return self.button_payments(name, amount, level)
+                    self.send_mail_temp()
+                    return self.button_payments(name, amount, level)
 
                         #  if xec.mode != "jun":
-                    elif xec.mode != "jun":
-                        full = fec.main_house_cost
-                        amount = self.total + payment_add \
+                elif xec.mode != "jun":
+                    full = self.main_house_cost
+                    amount = self.total + payment_add \
                          # fec.member_price + fec.package_cost
-                        fec.write({'main_house_cost': full, 'total': amount})
-                        self.send_mail_temp()
-                        return self.button_payments(name, amount, level)
+                    self.write({'main_house_cost': full, 'total': amount})
+                    self.send_mail_temp()
+                    return self.button_payments(name, amount, level)
                      
-            elif not search_mem:
-                level = "temp"
-                full_main_house = self.main_house_cost
-                amount = fec.total + payment_add # self.total +payment_add # + fec.total 
-                # fec.member_price + fec.package_cost
-                fec.write({
+        elif not search_mem:
+            level = "temp"
+            full_main_house = self.main_house_cost
+            amount = payment_add + self.main_house_cost + self.package_cost + self.member_price
+            self.write({
                             'main_house_cost': full_main_house, 
                             'total': amount})
-                self.send_mail_temp()
-                return self.button_payments(name, amount, level)
+            self.send_mail_temp()
+            return self.button_payments(name, amount, level)
 
     @api.multi
     def send_mail_temp(self, force=False):
@@ -786,7 +839,7 @@ class App_Member(models.Model):
         extra = self.email
         bodyx = "Dear Sir/Madam, </br>We wish to notify \
          that you have been promoted to a temporary member on the date: {} \
-         </br> Kindly contact the Ikoyi Club 1968 for any further enquires \
+         </br> Kindly contact the Ikoyi Club 1938 for any further enquires \
          </br> Thanks".format(fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
@@ -866,7 +919,7 @@ class App_Member(models.Model):
         extra = self.email
         bodyx = "Dear Sir/Madam, </br>I wish to notify you that you have been completed all necessary requirement for Ikoyi Club Membership\
         . The Membership Manager will soon confirm your approval to permanent\
-        membership.</br> Kindly contact Ikoyi Club 1968 for further details</br>Thanks"
+        membership.</br> Kindly contact Ikoyi Club 1938 for further details</br>Thanks"
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
     @api.multi
@@ -897,7 +950,7 @@ class App_Member(models.Model):
         extra = self.email
         bodyx = "Dear Sir/Madam, </br>Congratulations! You have been approved as a permanent\
         member Ikoyi Club with ID. Number {} on the date {}.</br> Kindly contact Ikoyi\
-         Club 1968 for further details</br>Thanks".format(self.identification, fields.Datetime.now())
+         Club 1938 for further details</br>Thanks".format(self.identification, fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
     # # # # # # # # # # # # # # # # # # # # # # # # #  EMAIL FOR ONE ONLY mail_sending # 
@@ -991,7 +1044,7 @@ class App_Member(models.Model):
         extra = self.email
         bodyx = "Dear Sir/Madam, </br>Congratulations! You have been approved as a Life\
         member of Ikoyi Club on the date {}  after serving for 25 years.</br> Kindly contact Ikoyi\
-         Club 1968 for further details</br>Thanks".format(fields.Datetime.now())
+         Club 1938 for further details</br>Thanks".format(fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
     #  Account only confirm payment and makes
 
@@ -1058,6 +1111,15 @@ class App_Member(models.Model):
             report.write({'report_type': 'qweb-pdf'})
         return self.env['report'].get_action(
             self.id, 'member_app.member_profile_report_template')
+        
+    @api.multi
+    def print_receipt(self):
+        report = self.env["ir.actions.report.xml"].search(
+            [('report_name', '=', 'member_app.membership_receipt_template')], limit=1)
+        if report:
+            report.write({'report_type': 'qweb-pdf'})
+        return self.env['report'].get_action(
+            self.id, 'member_app.membership_receipt_template')
 
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #  reverse states # # # # # # # # # # # # # # # # # # # # # # # # # 
     @api.multi
@@ -1082,7 +1144,8 @@ class App_Member(models.Model):
 
     @api.multi
     def inactivate(self):
-        self.write({'active': False})
+        self.run_crons()
+        # self.write({'activity': "inact"})
 
     @api.model
     def create(self, vals):  #  vals is an already odoo context
@@ -1288,7 +1351,7 @@ class App_Member(models.Model):
                 'product_id': product_id,  #  partner.product_id.id,
                 'price_unit': amount,
                 'invoice_id': invoice.id,
-                'account_id': partner.account_id.id or partner.partner_id.property_account_receivable_id.id,
+                'account_id': partner.account_id.id or partner.partner_id.property_account_payable_id.id,
 
             }
             #  create a record in cache, apply onchange then revert back to a
@@ -1336,15 +1399,16 @@ class Member_Payment_Breakdown(models.Model):
     amount_to_pay = fields.Float('Amount to be paid')
     due_date = fields.Datetime('Due date')
 
-    @api.multi
+    '''@api.multi
     def print_receipt(self):
         return self.env['report'].get_action(
-            self.id, 'construction_rewrite.receipt_view_report')
+            self.id, 'construction_rewrite.receipt_view_report')'''
 
 
 class App_Member_Line(models.Model):
     _name = "member.payment"
     member_id = fields.Many2one('member.app', 'Member ID')
+    name = fields.Char('Membership Type')
     product_id = fields.Many2one(
         'product.product',
         string='Membership',
@@ -1367,7 +1431,7 @@ class App_Member_Line(models.Model):
 class App_Member_Line_major(models.Model):
     _name = "member.payment.new"
     member_idx = fields.Many2one('member.app', 'Member ID')
-
+    name = fields.Char('Membership Type')
     product_id = fields.Many2one(
         'product.product',
         string='Membership',
@@ -1802,7 +1866,7 @@ class RegisterSpouseMember(models.Model):
                 'product_id': product_id,  #  partner.product_id.id,
                 'price_unit': amount,
                 'invoice_id': invoice.id,
-                'account_id': partner.account_id.id or partner.partner_id.property_account_receivable_id.id,
+                'account_id': partner.account_id.id or partner.partner_id.property_account_payable_id.id,
 
             }
             #  create a record in cache, apply onchange then revert back to a
@@ -1894,7 +1958,8 @@ class RegisterPaymentMember(models.Model):
                                ('ano', 'Anomaly'),
                                ('normal', 'Normal'),
                                ], default='normal', string='Payment type')
-
+    num = fields.Float('Number')
+    
     @api.one
     def button_pay(self):
         #  self.mail_sending()
@@ -1922,8 +1987,9 @@ class RegisterPaymentMember(models.Model):
 
             search_id = self.env['member.app'].search(
                 [('id', '=', self.member_ref.id)])
-            sub_id = self.env['subscription.model'].search(
-                [('member_id', '=', self.member_ref.id)])
+             
+            sub_id = self.env['subscription.model'].search([('id', '=', self.num)])#.id or False
+                    #[('member_id', '=', self.member_ref.id)])
 
             for fec in search_id:  #  level
                 product = 0
@@ -1944,14 +2010,15 @@ class RegisterPaymentMember(models.Model):
                     lists = []
                     list1 = []
                     balance = rey.to_pay - rey.amount
-                    values = (0,
-                              0,
+                    values = (0, 0,
                               {'member_idx': fec.id,
                                'product_id': product,
                                'paid_amount': rey.amount,
                                'balance': balance,
                                'pdate': rey.date,
-                               'member_price': fec.total})
+                               'member_price': fec.total,
+                               'name': "White Form Payment"})
+                    
                     lists.append(values)
                     list1.append(values)
                     fec.payment_line2 = lists
@@ -1970,7 +2037,9 @@ class RegisterPaymentMember(models.Model):
                                'paid_amount': rey.amount,
                                'balance': balance,
                                'pdate': rey.date,
-                               'member_price': fec.total})
+                               'member_price': fec.total,
+                               'name': "Main Membership Payment"})
+                    
                     lists.append(values)
                     list1.append(values)
                     fec.payment_line2 = lists
@@ -1982,13 +2051,13 @@ class RegisterPaymentMember(models.Model):
                     lists = []
                     list1 = []
                     balance = rey.to_pay - rey.amount
-                    values = (0,
-                              0,
+                    values = (0, 0,
                               {'member_idx': fec.id,
                                'product_id': product,
                                'paid_amount': rey.amount,
                                'balance': balance,
                                'pdate': rey.date,
+                               'name':"Green Card Payment",
                                'member_price': fec.total})
                     lists.append(values)
                     list1.append(values)
@@ -2002,37 +2071,30 @@ class RegisterPaymentMember(models.Model):
                     lists = []
                     list1 = []
                     balance = fec.total - rey.amount
-                    values = (0,
-                              0,
+                    values = (0, 0,
                               {'member_idx': fec.id,
                                'product_id': product,
                                'paid_amount': rey.amount,
+                               'name':"Membership Form Payment",
                                'balance': balance,
                                'pdate': self.date,
                                'member_price': fec.total})
+                    
                     lists.append(values)
                     list1.append(values)
                     fec.payment_line2 = lists
                     fec.payment_line1 = list1
                     rey.state = "pay"
-
+                
                 else:
                     if rey.p_type != "ano":
                         lists = []
                         list1 = []
                         list3 = []
                         balance = rey.to_pay - rey.amount
-                        '''values = (0,0,{'member_idx':fec.id,'product_id':product,'paid_amount':rey.amount,'balance':balance,\
-                        'pdate':self.date,'member_price':rey.to_pay})
-                        lists.append(values)
-                        list1.append(values)
-                        # fec.payment_line2 = lists
-                        # fec.payment_line1 = list1'''
-
                         if sub_id:
                             for tey in sub_id:
                                 tey.state = "done"
-
                                 name_s = str(
                                     tey.periods_month).capitalize().replace(
                                     '_', ' ') + "Subscription"
@@ -2047,7 +2109,7 @@ class RegisterPaymentMember(models.Model):
                                                'paid_amount': rey.amount,
                                                'balance': balance})
                                 list3.append(sub_values)
-                                fec.sub_line = list3
+                            fec.sub_line = list3
 
                     else:
                         lists = []
@@ -2056,35 +2118,27 @@ class RegisterPaymentMember(models.Model):
                         # percent = 12.5/100
                         # fine = percent
                         balance = rey.to_pay - rey.amount
-                        '''values = (0,0,{'member_idx':fec.id,'product_id':product,'paid_amount':rey.amount,'balance':balance,\
-                        'pdate':self.date,'member_price':rey.to_pay})
-                        lists.append(values)
-                        list1.append(values)
-                        fec.payment_line2 = lists
-                        # fec.payment_line1 = list1'''
                         if sub_id:
-                            for tey in sub_id:
-                                for gec in fec.sub_line:
-                                    if gec.sub_order.id == tey.id:
-                                        gec.unlink()
+                            for gec in fec.sub_line:
+                                if gec.sub_order.id == sub_id.id:
+                                    gec.unlink()
 
-                                tey.state = "fined"
+                            sub_id.state = "fined"
                                 #  str(tey.periods_month).capitalize().replace('_',' ') + "Subscription"
-                                name_s = "Fine for Anomaly"
-                                sub_values = (0,
-                                              0,
-                                              {'sub_order': tey.id,
-                                               'member_id': fec.id,
+                            name_s = "Fine for Anomaly"
+                            sub_values = (0, 0,
+                                              {'sub_order': sub_id.id,
+                                               'member_id': sub_id.id,
                                                'name': name_s,
-                                               'periods_month': tey.periods_month,
-                                               'pdate': rey.date,
-                                               'total_price': tey.total,
+                                               'periods_month': sub_id.periods_month,
+                                               'pdate': sub_id.date,
+                                               'total_price': sub_id.total,
                                                'paid_amount': rey.amount,
                                                'balance': balance})
-                                list3.append(sub_values)
-                                fec.sub_line = list3
-                                #  payment_model.unlink()
-                                payment_model.write(
+                            list3.append(sub_values)
+                            fec.sub_line = list3
+                                # payment_model.unlink()
+                            payment_model.write(
                                     {'communication': 'Fine Payment', 'amount': rey.amount})
 
         return {'type': 'ir.actions.act_window_close'}

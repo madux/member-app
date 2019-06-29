@@ -10,17 +10,23 @@
     'category': 'Base',
     # 'live_test_url': "https://www.youtube.com/watch?v=4v5P1UdhdxU",
 
-    'depends': ['base', 'hr','sale','ikoyi_module','account','product','branch'],
+    'depends': ['base', 'sh_message','hr','sale','ikoyi_module','account','product','branch'],
     'data': [
         'security/security_group.xml',
         'security/ir.model.access.csv',
         'views/member_app_view.xml',
         'views/suspension_view.xml',
         'views/subscription_view.xml',
-        'views/guest_view.xml',
-        'views/subscription_view.xml',
+        'views/guest_view.xml', 
+        'views/spouse_exclusion_view.xml',
+        'views/reinstatement_view.xml',
+        'reports/receipt_membership.xml',
         'reports/id_card_template.xml',
         'reports/id_card.xml',
+        'reports/subscription_receipt.xml',
+        'reports/bio_data.xml',
+        'data/crons.xml',
+        
         
     ],
     'qweb': [

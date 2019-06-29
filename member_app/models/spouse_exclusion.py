@@ -41,6 +41,7 @@ class Spouse_Exclusion(models.Model):
     date_order = fields.Datetime('Offer Date', default=fields.Datetime.now())
     binary_attach_receipt = fields.Binary('Attach Letter')
     binary_fname_receipt = fields.Char('Binary Letter')
+    users_followers = fields.Many2many('res.users', string='Add followers')
 
     @api.onchange('sponsor_id')
     def domain_name_depend(self):
@@ -51,10 +52,10 @@ class Spouse_Exclusion(models.Model):
             sponsor_search = sponsor.search([('id', '=', self.sponsor_id.id)])
             for tex in sponsor_search.depend_name:
                 names.append(tex.id)
-                domain = {'name': [('id', 'in', name)]}
+                domain = {'name': [('id', 'in', names)]}
             return {'domain': domain}
 
-    @api.onchange('sponsor_id')
+    @api.onchange('name')
     def name_changes(self):
         for rec in self:
             rec.email = rec.name.email
@@ -74,9 +75,9 @@ class Spouse_Exclusion(models.Model):
     def send_manager_confirm(self):
         for rec in self:
             rec.write({'state': 'done'})
-            sponsor = self.env['member.app']
-            sponsor_search = sponsor.search([('id', '=', self.sponsor_id.id)])
-            sponsor_search.write({'active': True})
+            sponsor = self.env['register.spouse.member']
+            sponsor_search = sponsor.search([('id', '=', self.name.id)])
+            sponsor_search.write({'active': False})
             self.send_mail_spouse()
 
     @api.multi
@@ -127,3 +128,53 @@ class Spouse_Exclusion(models.Model):
         base_url = http.request.env['ir.config_parameter'].sudo(
         ).get_param('web.base.url')
         base_url += '/web# id=%d&view_type=form&model=%s' % (id, model)
+
+    def mail_sending(self, email_from, group_user_id, extra, bodyx):
+        from_browse = self.env.user.name
+        groups = self.env['res.groups']
+        for order in self:
+            group_users = groups.search([('id', '=', group_user_id)])
+            group_emails = group_users.users
+            followers = []
+            email_to = []
+            for group_mail in self.users_followers:
+                followers.append(group_mail.login)
+
+            for gec in group_emails:
+                email_to.append(gec.login)
+
+            email_froms = str(from_browse) + " <" + str(email_from) + ">"
+            mail_appends = (', '.join(str(item)for item in followers))
+            mail_to = (','.join(str(item2)for item2 in email_to))
+            subject = "Spouse Exclusion Notification"
+
+            extrax = (', '.join(str(extra)))
+            followers.append(extrax)
+            mail_data = {
+                'email_from': email_froms,
+                'subject': subject,
+                'email_to': mail_to,
+                'email_cc': mail_appends,  # + (','.join(str(extra)),
+                'reply_to': email_from,
+                'body_html': bodyx
+            }
+            mail_id = order.env['mail.mail'].create(mail_data)
+            order.env['mail.mail'].send(mail_id)
+    
+    def fetch_followers(self):
+        group1 = self.env.ref('member_app.manager_member_ikoyi').id
+        group2 = self.env.ref('member_app.membership_honour_ikoyi').id
+        group3 = self.env.ref('ikoyi_module.gm_ikoyi').id
+        group4 = self.env.ref('member_app.membership_officer_ikoyi').id
+        groups_lists = [group1, group2, group3, group4]
+        groups_obj = self.env['res.groups']
+        users = []
+        for each in groups_lists:
+            group_users = groups_obj.search([('id', '=', each)])
+            if group_users:
+                for user in group_users.users:
+                    users.append(user.id)
+                    self.users_followers = [(6, 0, users)]
+            else:
+                pass
+        return True

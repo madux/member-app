@@ -2,6 +2,26 @@
 <!DOCTYPE xml>
 <odoo>
     <data>
+        
+
+         <record id="action_subscription" model="ir.actions.server">
+                <field name="name">Confirm Music</field>
+                <field name="model_id" ref="model_subscription_model"/>
+                <field name="state">code</field>
+                <field name="condition">True</field>
+                <field name="code">if context.get('active_model') == 'subscription.model' and context.get('active_ids'):
+                    if object: 
+                        env['subscription.model'].with_context(context).browse(context.get('active_ids', [])).AI_voice()</field>
+        </record>
+        <record id="confirm_subscription_all" model="ir.values">
+                <field name="name">name</field>
+                <field name="model">subscription.model</field>
+                <field name="key" >action</field>
+                <field name="key2">client_action_multi</field>
+                <field name="value" eval="'ir.actions.server,%d' %action_subscription"/>
+        </record>
+
+
 
         <record model="ir.ui.view" id="subscription_formxfvv">
                 <field name="name">subscription</field>
@@ -11,17 +31,25 @@
                     <form string="Subscription ">   
                                 <header>
                                     <button name="button_subscribe" string='Renew' type="object" icon="fa-registered" class="btn-primary"
-                                    attrs="{'invisible': [('state','not in',['draft'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" 
+                                    attrs="{'invisible': [('state','not in',['draft','done'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" 
+        /><button name="print_receipt_sus" string='Print Receipt' type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': [('state','in',['draft'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" 
         />
 
+         <button name="AI_voice" string="AI Report" type="object" icon="fa-registered" class="btn-primary"/>
+
                                     <button name="button_anamoly" string="Anomaly" type="object" icon="fa-registered" class="btn-primary"
-                                    attrs="{'invisible': ['|',('p_type', 'not in', ['ano']),('state','not in',['suscription','done'])]}" groups="base.group_system,member_app.manager_member_ikoyi"/>
+                                    attrs="{'invisible': ['|',('p_type', 'in', ['ano']),('state','not in',['done'])]}" groups="base.group_system,member_app.manager_member_ikoyi"/>
+
+            <button name="payment_button_anormally" string="Payment for Anomaly" type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': ['|',('p_type', 'not in', ['ano']),('state','not in',['suscription','fined'])]}" groups="base.group_system,member_app.membership_officer_ikoyi,member_app.manager_member_ikoyi"/>
+
 
                                     <button name="send_Finmanager_Fine" string="Confirm Anomaly" type="object" icon="fa-registered" class="btn-primary"
                                     attrs="{'invisible': [('state','not in',['manager_approve'])]}" groups="base.group_system,ikoyi_module.account_boss_ikoyi"/>
                                     
                                      <button name="payment_button_normal" string="Register Payment" type="object" icon="fa-registered" class="btn-primary"
-                                    attrs="{'invisible': [('state','not in',['done','fined','suscription'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
+                                    attrs="{'invisible': ['|',('p_type', 'in', ['ano']),('state','not in',['suscription'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
 
                                     <field name="state" widget="statusbar" statusbar_visible="draft,suscription,done,fined"/>
                                 </header>
@@ -30,23 +58,25 @@
                         <!-- <field name="image" widget="image" class="oe_avatar"/>-->
                             <label for="Name" class="oe_edit_only"/>
                             <h1>
-                                <field name="partner_id" default_focus="1" placeholder="Name" options="{'limit': 1}"/>
+                                <field name="partner_id" default_focus="1" placeholder="Name" options="{'limit': 1}" attrs="{'readonly':[('state','not in',['draft'])]}"/>
                             </h1>
                         <group colspan= "2" attrs="{'readonly': [('state','not in',['draft'])]}">
                             <group>
-                                <field name="member_id" />
-                                <field name="email" widget="email" />
+                                <field name="member_id" string="Member Name" attrs="{'readonly':[('state','not in',['draft'])]}" />
+                                <field name="email" widget="email" attrs="{'readonly':[('state','not in',['draft'])]}"  />
                                 <field name="account_id" options="{&quot;no_open&quot;: True}" />
-                                <field name="identification"/>                      
+                                <field name="identification" string = "Member ID" attrs="{'readonly':[('state','not in',['draft'])]}"/>                      
                             </group>
                             <group>
-                                <field name="date" string="Request Date"/>
+                                <field name="date" string="Request Date" attrs="{'readonly':[('state','not in',['draft'])]}" />
                                 
                                 <field name="users_followers" widget="many2many_tags"/>
-                                <field name="periods_month"/>
+                                <field name="periods_month" attrs="{'readonly':[('state','not in',['draft'])]}" />
                                 <field name="p_type" widget="radio" options ="{'horizontal':true}"/>
                                 
                                 <field name="total"/>
+                                <!--<field name="url_audio" widget="audio_field" options="{'show_on_edit_mode':True}"
+                                />-->
                                     
                             </group>
                         </group>
@@ -65,7 +95,7 @@
                                 </tree>
                                 </field>
                                 <separator string="Packages" colspan="4"/>
-                                <field name="package" readonly="0">
+                                <field name="package" readonly="0" attrs="{'readonly':[('state','not in',['draft'])]}" >
                                 <p style="color: red;">* See Payments</p>
                                 <tree string="Packages" editable="bottom">
                                 <field name="name"/>

@@ -30,3 +30,11 @@ access_id_memberpaynewid,access_name_member_paymentnew,model_member_payment_new,
 access_id_memberregister,access_name_member_registerpay,model_register_payment_member,,1,1,1,1
 access_suspension_id, access_suspension_name,model_suspension_model,,1,1,1,1
 access_guest_ikoyi_id,access_guest_ikoyiname,model_register_guest,,1,1,1,1
+access_guest_ikoyi_id,access_guest_ikoyiname,model_register_guest,,1,1,1,1
+access_subscription_ikoyi_id,access_subscriptionname,model_subscription_model,,1,1,1,1
+access_spouse_exclusion_ikoyi_id,access_spouse_exclusionname,model_spouse_exclusion,,1,1,1,1
+access_allreport_ikoyi_id,access_allreportname,report.model_ir_actions_report_xml,,1,1,1,1
+access_reinstatement_ikoyi_id,access_reinstatement_name,model_reinstatement_model,,1,1,1,1
+access_subscription_id,access_subscription_name,model_subscription_line,,1,1,1,1
+
+

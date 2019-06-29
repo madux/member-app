@@ -7,6 +7,11 @@ from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
 from odoo import http
 
+
+from gtts import gTTS
+import os
+ 
+
 TYPE2JOURNAL = {
     'out_invoice': 'sale',
     'in_invoice': 'purchase',
@@ -25,7 +30,38 @@ class Subscription_Member(models.Model):
          'UNIQUE(partner_id)',
          'Partner must be unique')
     ]
+    
+    
+    
+    @api.multi
+    def AI_voice(self):
+        s = []
+        '''with open(fname, 'r') as f:
+            for line in f:
+                s.append(line)'''
+        member = self.env['member.app'].search([])
+        for rec in member: 
+            s.append(rec.partner_id.name + " registered using " + rec.phone + " as Phone Number")
+        
+        text = str(s)
+        obj = gTTS(text=text, lang='en', slow=False)
+        obj.save("/welcome.mp3") # Documents
+        os.system("/welcome.mp3")
+        print "Done"
+        
 
+
+    @api.multi
+    def name_get(self):
+        result = []
+        for record in self:
+            result.append(
+                (record.id,u"%s - %s" % (record.member_id.partner_id.name, record.identification) 
+                 ))
+            record.name = result
+        return result
+    # url_audio = fields.Char('Audio.', size=6)
+    
     partner_id = fields.Many2one(
         'res.partner', 'Name', domain=[
             ('is_member', '=', True)])
@@ -39,6 +75,7 @@ class Subscription_Member(models.Model):
         readonly=False,
         compute="Domain_Member_Field")
     identification = fields.Char('Identification.', size=6)
+    
     email = fields.Char('Email', store=True)
     account_id = fields.Many2one('account.account', 'Account')
     date = fields.Datetime('Date', required=True)
@@ -72,16 +109,12 @@ class Subscription_Member(models.Model):
                                ], default='normal', string='Type')
 
     # # # # 
-    periods_month = fields.Selection([('jan_Feb', 'Jan- Feb'),
-                                      ('mar_Apr', 'Mar - April'),
-                                      ('may_June', 'May - June'),
-                                      ('jul_Aug', 'July - Aug'),
-                                      ('sep_Oct', 'Sep - Oct'),
-                                      ('nov_Dec', 'Nov - Dec'),
-                                      ('full_Year', 'Full Year'),
-                                      ('quarter_ly', 'Quarterly'),
+    periods_month = fields.Selection([
+                                      ('1st Half', 'Ist Half'),
+                                      ('Full Year', 'Full Year'),
+                                      ('2nd Half', '2nd Half'),
 
-                                      ], string='Periods', required=True)
+                                      ],default="1st Half", string='Subscription Periods', required=True)
 
     # main_house_cost = fields.Float('Main House Fee',required=True)
     # # # # 
@@ -99,12 +132,12 @@ class Subscription_Member(models.Model):
             for sub in rec.subscription:
                 tot += sub.member_price
 
-            if rec.periods_month == 'full_Year':
+            '''if rec.periods_month == 'full_Year':
                 tot = tot * 12
             elif rec.periods_month == "quarter_ly":
                 tot = tot * 3
             else:
-                tot = tot
+                tot = tot'''
             rec.total = tot
 
     @api.depends('partner_id')
@@ -208,9 +241,8 @@ class Subscription_Member(models.Model):
         return self.payment_button_normal()
 
     @api.multi
-    def payment_button_normal(self):  #  suscription, manager_approve
+    def payment_button_normal(self):  #  suscription, 
         name = "."
-        percent = 12.5 / 100
         amount = 0.0  #  * percent
         level = ''
         if self.p_type != "ano":
@@ -218,40 +250,25 @@ class Subscription_Member(models.Model):
             amount = self.total
             name = "Renewed Subscription"
             return self.button_payments(name, amount, level)
-        elif self.p_type == "ano":
+    @api.multi
+    def print_receipt_sus(self):
+        report = self.env["ir.actions.report.xml"].search(
+            [('report_name', '=', 'member_app.subscription_receipt_template')], limit=1)
+        if report:
+            report.write({'report_type': 'qweb-pdf'})
+        return self.env['report'].get_action(
+            self.id, 'member_app.subscription_receipt_template')    
+    @api.multi
+    def payment_button_anormally(self):  #  suscription, manager_approve
+        name = "."
+        percent = 12.5 / 100
+        amount = 0.0  #  * percent
+        level = ''
+        if self.p_type == "ano":
             level = 'Fine'
             amount = percent * self.total
             name = "Fine"
             return self.button_payments(name, amount, level)
-
-    '''@api.multi
-    def send_to_hon(self):
-        self.write({'state':'hon_sec'})
-        self.send_mail_to_manager()
-
-    @api.multi
-    def send_to_hon_back(self):
-        self.write({'state':'draft'})
-        # self.send_mail_to_manager()
-
-
-    @api.multi
-    def send_hon_to_manager(self):
-        self.write({'state':'manager_approve'})
-        self.send_mail_to_manager()
-
-    @api.multi
-    def send_manager_to_approve(self):
-        memberx = self.env['member.app'].search([('partner_id', '=', self.partner_id.id)])
-        if memberx:
-            for rec in memberx:
-                rec.write({'state':"suspension", 'active':False, 'activity':'inact'})
-            self.write({'state':'suspend', 'suspension_date':fields.Datetime.now()})
-
-            self.send_mail_suspend()
-        else:
-            raise ValidationError('No member record found')'''
-
 
 # #  FUNCTIONS # # # # # 
     @api.multi
@@ -323,12 +340,28 @@ class Subscription_Member(models.Model):
                 'default_name': "Subscription Payments",
                 'default_level': level,
                 'default_to_pay': amount,
+                'default_num':self.id,
                 'default_p_type': self.p_type,
 
                 #  'default_communication':self.number
             },
         }
-
+        
+        
+class RegisterPaymentMemberx(models.Model):
+    _inherit = "register.payment.member"
+    _order = "id desc"
+    @api.multi
+    def button_pay(self,values):
+        self.ensure_one()
+        ids = values.get('member_ref')
+        data = super(RegisterPaymentMemberx,self).button_pay()
+        mem = self.env['subscription.model'].search([('id','=', self.num)])
+        if mem:
+            #raise Validation('Fire %d' %mem.id)
+            mem.write({'state':'done'})
+            
+        return data
 
 class subscription_LineMain(models.Model):
     _name = "subscription.line"
@@ -348,13 +381,8 @@ class subscription_LineMain(models.Model):
         'Subscription Date',
         default=fields.Date.today(),
         required=True)
-    periods_month = fields.Selection([('jan_Feb', 'Jan- Feb'),
-                                      ('mar_Apr', 'Mar - April'),
-                                      ('may_June', 'May - June'),
-                                      ('jul_Aug', 'July - Aug'),
-                                      ('sep_Oct', 'Sep - Oct'),
-                                      ('nov_Dec', 'Nov - Dec'),
-                                      ('full_Year', 'Full Year'),
-                                      ('quarter_ly', 'Quarterly'),
+    periods_month = fields.Selection([('1st Half', '1st Half'),
+                                      ('2nd Half', '2nd Half'),
+                                      ('Full Year', 'Full Year'),
 
                                       ], string='Periods', required=True)

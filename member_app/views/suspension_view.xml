@@ -22,7 +22,7 @@
                                     <button name="send_to_hon_back" string="Reject" type="object" icon="fa-registered" class="btn-primary"
                                     attrs="{'invisible': [('state','not in',['hon_sec'])]}" groups="member_app.membership_honour_ikoyi"/>
                                      <button name="payment_button" string="Register Payment" type="object" icon="fa-registered" class="btn-primary"
-                                    attrs="{'invisible': [('state','not in',['draft'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
+                                    attrs="{'invisible': [('state','not in',['member'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
 
                                     <field name="state" widget="statusbar" statusbar_visible="draft,hon_sec,manager_approve,suspend"/>
                                 </header>

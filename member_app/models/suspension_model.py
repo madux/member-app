@@ -24,10 +24,27 @@ class Suspend_Member(models.Model):
          'UNIQUE(partner_id)',
          'Partner must be unique')
     ]
-    
+    @api.constrains('member_id')
+    def check_suspended(self):
+        self.ensure_one()
+        member = self.env['member.app'].search(
+                [('partner_id', '=', record.partner_id.id)])
+        if member.activity in ['inact','dom'] or member.state == "suspension":
+            raise ValidationError('Member is already an inactive / suspended member')
+        
+    @api.multi
+    def name_get(self):
+        result = []
+        for record in self:
+            result.append(
+                (record.id,u"%s - %s" % (record.member_id.partner_id.name, record.identification) 
+                 ))
+            record.name = result
+        return result
+        
     partner_id = fields.Many2one('res.partner', 'Name', domain=[('is_member','=', True)])
-    member_id = fields.Many2one('member.app', 'Member ID', domain=[('state','!=', 'suspension')], readonly=False, compute="Domain_Member_Field")
-    identification = fields.Char('identification.', size=6)
+    member_id = fields.Many2one('member.app', 'Member Name', domain=[('state','!=', 'suspension')], readonly=False, compute="Domain_Member_Field")
+    identification = fields.Char('identification.', size=7)
     email = fields.Char('Email',store=True)
     account_id = fields.Many2one('account.account', 'Account')
     date = fields.Datetime('Date', required=True)
@@ -37,6 +54,7 @@ class Suspend_Member(models.Model):
     package = fields.Many2many('package.model', string ='Packages', readonly=False,  compute='get_all_packages')# ,compute='get_all_packages')
     state = fields.Selection([('draft','Draft'),
                                 ('hon_sec','Honourary'),
+                                ('member','Membership Officer'),
                                 ('manager_approve','Manager'),
                                  ('suspend','Suspended'),
                                 ], default = 'draft', string='Status')
@@ -79,28 +97,23 @@ class Suspend_Member(models.Model):
         
     @api.multi
     def send_hon_to_manager(self):
-        self.write({'state':'manager_approve'})
-        self.send_mail_to_manager()
+        self.write({'state':'member'})
+        self.send_mail_officer()
+        
         
     @api.multi
     def send_manager_to_approve(self):
         memberx = self.env['member.app'].search([('partner_id', '=', self.partner_id.id)]) 
         if memberx:
             for rec in memberx:
-                rec.write({'state':"suspension", 'active':False, 'activity':'inact'})
+                rec.write({'state':"suspension", 'activity':'inact'})
             self.write({'state':'suspend', 'suspension_date':fields.Datetime.now()})
             
             self.send_mail_suspend()
         else:
             raise ValidationError('No member record found')
         
-    @api.one
-    def payment_button(self):
-        name = "Suspension Payment Fee"
-        percent = 50/100
-        amount = self.main_house_fee * percent
-        level = 'Suspension'
-        return self.button_payments(name,amount,level)
+    
     
 # #  FUNCTIONS # # # # #     
     @api.multi
@@ -110,10 +123,21 @@ class Suspend_Member(models.Model):
         # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
         extra=self.email
         bodyx = "Dear Sir/Madam, </br>We wish to notify that the member with ID {} have been Suspended from Ikoyi Club on the date: {} </br>\
-             Kindly contact the Ikoyi Club 1968 for any further enquires. </br><a href={}> </b>Click <a/> to review. Thanks"\
+             Kindly contact the Ikoyi Club 1938 for any further enquires. </br><a href={}> </b>Click <a/> to review. Thanks"\
              .format(self.identification,fields.Datetime.now(),self.get_url(self.id, self._name))
         self.mail_sending(email_from,group_user_id,extra,bodyx) 
-        
+    
+    @api.multi
+    def send_mail_officer(self, force=False):
+        email_from = self.env.user.company_id.email
+        group_user_id = self.env.ref('member_app.membership_officer_ikoyi').id
+        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
+        extra=self.env.user.company_id.email
+        bodyx = "Dear Sir/Madam, </br>We wish to notify that the member with ID {} have requested for self suspension from Ikoyi Club on the date: {} </br>\
+             Kindly </br><a href={}> </b>Click <a/> to review. Thanks"\
+             .format(self.identification,fields.Datetime.now(),self.get_url(self.id, self._name))
+        self.mail_sending(email_from,group_user_id,extra,bodyx) 
+            
     @api.multi
     def send_mail_to_manager(self, force=False):
         email_from = self.env.user.company_id.email
@@ -181,10 +205,30 @@ class Suspend_Member(models.Model):
                   
                   'default_partner_id':self.partner_id.id,
                   'default_member_ref':self.member_id.id,
-                  'default_name':"Membership Payments",
+                  'default_name':name,
                   'default_level':level,
-                  'default_to_pay':amount
+                  'default_to_pay':amount,
+                  'default_num':self.id,
 
                   # 'default_communication':self.number
               },
         }
+        
+    @api.multi
+    def payment_button(self):
+        name = "Self Suspension Payment Fee"
+        percent = 50/100
+        amountx = self.main_house_cost * percent
+        level = 'Suspension'
+        return self.button_payments(name,amountx,level)
+        
+class RegisterPaymentMembery(models.Model):
+    _inherit = "register.payment.member"
+    _order = "id desc"
+    @api.one
+    def button_pay(self):
+        data = super(RegisterPaymentMembery,self).button_pay()
+        suspend_id = self.env['suspension.model'].search([('id','=', self.num)])
+        if suspend_id:
+            suspend_id.write({'state':'manager_approve'})
+        return data

@@ -1,5 +1,10 @@
+import time
 from odoo import models, fields, api, _
+import odoo.addons.decimal_precision as dp
 from odoo.exceptions import except_orm, ValidationError
+from odoo.tools import misc, DEFAULT_SERVER_DATETIME_FORMAT
+from dateutil.relativedelta import relativedelta
+from datetime import datetime, timedelta
 from odoo import http
 
 
@@ -18,7 +23,7 @@ class RegisterGuest(models.Model):
         return res
 
     _sql_constraints = [
-        ('name_unique',
+        ('partner_id_unique',
          'UNIQUE(partner_id)',
          'Partner Name must be unique')
     ]
@@ -91,7 +96,7 @@ class RegisterGuest(models.Model):
         string='Section Cost',
         required=True,
         readonly=False)
-    total = fields.Integer('Total Amount', compute='get_totals')
+    total = fields.Integer('Total Amount', default=60000, required=True)#compute='get_totals')
     date_order = fields.Datetime('Offer Date', default=fields.Datetime.now())
     member_age = fields.Integer(
         'Age',
@@ -107,7 +112,7 @@ class RegisterGuest(models.Model):
     package = fields.Many2many('package.model', string='Compulsory Packages')
     package_cost = fields.Float(
         'Package Cost',
-        required=True,
+        required=False,
         compute='get_package_cost')
     users_followers = fields.Many2many('res.users', string='Add followers')
 
@@ -121,13 +126,20 @@ class RegisterGuest(models.Model):
 
     binary_attach_receipt = fields.Binary('Attach Payment Teller')
     binary_fname_receipt = fields.Char('Binary receipt')
-    #  3
-    '''mode = fields.Selection([
-        ('jun', 'Junior'),
-        ('old', 'Old'),
-        ('new', 'New'),
-        ], 'Mode', default='jun', index=True, required=True, readonly=False, \
-        copy=False, track_visibility='always')'''
+    
+    
+    purpose_visit = fields.Text('Purpose of Visit')
+    abroad_address = fields.Text('Address abroad')
+    passport_number = fields.Char('Passport Number')
+    
+    resident_permit = fields.Char('Resident Permit Number')
+    position_holder = fields.Char('Position in Company')
+    
+    member_condition = fields.Selection([
+        ('yes', 'Yes'),
+        ('no', 'No'),
+        ], 'Have you ever been a member of Ikoyi Club 1938', default='no', index=True, required=False, readonly=False, \
+        copy=False, track_visibility='always')
     state = fields.Selection([
         ('draft', 'Draft'),
         ('honourary', 'Honorary Secretary'),
@@ -138,7 +150,7 @@ class RegisterGuest(models.Model):
         ('verify', 'Verification'),
         ('confirm', 'Confirmed'),
     ], 'Status', default='draft', index=True, required=True, readonly=False,
-        copy=False, track_visibility='always')
+                              copy=False, track_visibility='always')
     relationship = fields.Selection([('Child',
                                       'Child'),
                                      ('Brother',
@@ -199,19 +211,18 @@ class RegisterGuest(models.Model):
     def get_totals(self):
         for rec in self:
             rec.total = rec.member_price + rec.package_cost
-
+    @api.one
     @api.depends('package', 'subscription')
     def get_package_cost(self):
         total1 = 0.0
         total2 = 0.
-        for rec in self:
-            for ret in rec.package:
-                total1 += ret.package_cost
+        for ret in self.package:
+            total1 += ret.package_cost
 
-            for rm in rec.subscription:
-                total2 += rm.member_price
-            rec.member_price = total2
-            rec.package_cost = total1
+        for rm in self.subscription:
+            total2 += rm.member_price
+        self.member_price = total2
+        self.package_cost = total1
 
     @api.multi
     def button_send_hon(self):  # draft memoffice
@@ -272,9 +283,7 @@ class RegisterGuest(models.Model):
         bodyx = "Sir/Madam, </br>I wish to notify you that a request for guest \
          membership with name: {} have been approve on the date: {}.</br>\
              Kindly <a href={}> </b>Click <a/> to Login to the \
-             ERP to view</br> Thanks".format(self.partner_id.name,
-                                             fields.Datetime.now(),
-                                             self.get_url(self.id, self._name))
+             ERP to view</br> Thanks".format(self.partner_id.name, fields.Datetime.now(), self.get_url(self.id, self._name))
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
     # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -363,6 +372,7 @@ class RegisterGuest(models.Model):
         """
         amount = self.total
         product = 0
+        state_now = str(self.state).replace('_', ' ').capitalize()
         products = self.env['product.product']
         product_search = products.search(
             [('name', 'ilike', 'Guest Membership')])
@@ -371,9 +381,7 @@ class RegisterGuest(models.Model):
             product = product_search[0].id
         else:
             pro = products.create(
-                {'name': 'Guest Membership', 
-                 'membershipx': True, 
-                 'list_price': amount})
+                {'name': 'Guest Membership', 'membershipx': True, 'list_price': amount})
             product = pro.id
         product_id = product
         self.write({'product_id': product})
@@ -387,8 +395,7 @@ class RegisterGuest(models.Model):
 
         else:
             branch_create = branch.create(
-                {'name': 'Ikoyi Club Lagos', 
-                 'company_id': self.env.user.company_id.id or 1})
+                {'name': 'Ikoyi Club Lagos', 'company_id': self.env.user.company_id.id or 1})
             branch_id = branch_create.id
 
         for partner in self:
@@ -403,7 +410,7 @@ class RegisterGuest(models.Model):
                 'product_id': product_id,  # partner.product_id.id,
                 'price_unit': amount,
                 'invoice_id': invoice.id,
-                'account_id': partner.account_id.id or partner.partner_id.property_account_receivable_id.id,
+                'account_id': partner.account_id.id or partner.partner_id.property_account_payable_id.id,
 
             }
             #  create a record in cache, apply onchange then revert back to a

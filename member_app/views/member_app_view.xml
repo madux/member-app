@@ -41,6 +41,7 @@
                             <field name="p_type" required="0"/>
                             <field name="to_pay" widget="monetary"/>
                             <field name="amount" widget="monetary"/>
+                            <field name="num" invisible="1"/>
 
                             <field name="users_followers" widget="many2many_tags" invisible="0"/>
 
@@ -136,12 +137,16 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                             <button name="reverse_life" string="Reverse" type="object" icon="fa-registered" class="btn-primary" groups="base.group_system,member_app.manager_member_ikoyi"
                             attrs="{'invisible': ['|',('asso_member', '=', True),('state','in',['draft','wait','induction','life','issue_green','suspension','temp','white','jun','manager','green','manager_two','ord','interview','account'])]}"/>
                             <field name="state" widget="statusbar" statusbar_visible="draft,white,green,ord,life"/>
-
+<button name="run_crons" string="Change Status" confirm ="Are you sure you want to Confirm this Member to Inactive Or Dormant" help="Clicking this button will check the members last payment date and set to Dormant, InActive" type="object" icon="fa-registered" attrs="{'invisible': [('state','in',['draft','green','issue_green','wait','white'])]}" class="btn-primary" groups="base.user_root"/>
+                            
                              </header>
                                 <sheet>
                                     <div class="oe_button_box" name="button_box">
                                     <button name="membership_invoice" string="Create Invoice" type="object" icon="fa-registered"  class="oe_stat_button"
                                         attrs="{'invisible': ['|',('asso_member', '=', True),('state','in',['draft','interview','induction','hon'])]}"/>
+                                    <button name="print_receipt" string="Print Receipt" type="object" icon="fa-registered"  class="oe_stat_button"/>
+                                    
+                                    
                                     <button name="button_register_spouse" string="Register Spouse" type="object" icon="fa-registered" class="btn-primary"
                                             attrs="{'invisible': ['|',('asso_member', '=', True),('state','in',['draft','white','wait','suspension','interview','green'])]}"/>
 
@@ -160,7 +165,8 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
 
                         <h1>
                             <!--<field name="name" default_focus="1" placeholder="Name" attrs="{'required' : [('type', '=', 'contact')]}"/>  -->
-                            <field name="partner_id" default_focus="1" placeholder="Name" attrs="{'readonly':[('state','in',['green','ord','life'])]}" options="{'limit': 1}"/>
+                            <field name="partner_id" default_focus="1" placeholder="Name" attrs="{'readonly':[('state','not in',['draft'])],'required':[('state','in',['draft'])]}"
+                            options="{&quot;no_open&quot;: True,'no_quick_create':False,'no_create_edit':True,'limit': 1}"/>
                         </h1>
                         <!--<div class="o_row">
                             <field name="parent_id" placeholder="Company" name domain="[('is_company', '=', True)]" context="{'default_is_company': True, 'default_supplier': supplier, 'default_customer': customer}" attrs="{'invisible': ['|', '&amp;', ('is_company','=', True),('parent_id', '=', False),('company_name', '!=', False),('company_name', '!=', '')]}"/>
@@ -223,21 +229,21 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                                     
 
                                     <field name="date_pickup" string = "White Form Submission" attrs="{'readonly':[('state','in',['green','temp','ord','jun','life','hon'])],
-                                    'invisible':[('state','not in',['draft','wait'])],'required':[('state','in',['wait'])]}"/>
-                                   <field name="date_green_pickup"
+                                    'invisible':[('state','not in',['wait'])],'required':[('state','in',['wait'])]}"/>
+                                   <field name="date_green_pickup" string="Green Form Submission Date"
                                         attrs="{'readonly':[('state','not in',['issue_green'])],'invisible':[('state','not in',['issue_green'])],'required':[('state', 'in', ['issue_green'])]}"/>
 
-<field name="date_issue_green" invisible="0"/> <!--inx-->
+<field name="date_issue_green" attrs="{'invisible':[('state','not in',['issue_green','green'])]}"/> <!--inx-->
 
-                                    <field name="duration_pick" string = "Pickup Duration(Days)" attrs="{'invisible':[('state','not in',['draft','white'])]}"/>
+                                    <field name="duration_pick" string = "Pickup Duration(Days)" attrs="{'invisible':[('state','not in',['wait'])]}"/>
                                     <field name="date_of_temp" invisible="0" readonly="0" attrs="{'readonly':[('state','not in',['draft','white','green','temp'])],'invisible':[('state','in',['draft','white','issue_green','wait','interview','green'])]}"/>
-                                    <field name="binary_attach_interview" filename="binary_fname_interview" string="Upload Interview Report" attrs="{'required':[('state','in',['interview'])]}" invisible="0"/>
+                                    <field name="binary_attach_interview" filename="binary_fname_interview" string="Upload Interview Report" attrs="{'required':[('state','in',['interview'])],'invisible':[('state','in',['draft','white','wait'])]}"/>
                                     <field name="binary_fname_interview" required="0" invisible="1" />
          
-                                    <field name="product_id" string="Membership Level"  options="{'no_create': True}"/>
+                                    <field name="product_id" string="Membership Type"  options="{'no_create': True}"/>
                                     
                                     <field name="asso_member" attrs="{'invisible':[('state','not in',['draft','white'])]}"/>
-                                    <field name="date_of_interview" attrs="{'invisible':[('state','not in',['wait'])],'required':[('state','in',['wait'])]}"/>
+                                    <field name="date_of_interview" attrs="{'invisible':[('state','not in',['wait'])]}"/>
                                     <field name="account_id" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" attrs="{'readonly':[('state','not in',['white','green','issue_green'])],'invisible':[('state','not in',['white','green','issue_green'])],'required': [('state','in',['white','issue_green','green'])]}"/>
                                     <label for="associate_member"/><!--attrs="{'required':[('state','not in',['draft','white'])]}"-->
                                         <div>
@@ -250,9 +256,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
 
                                      
                                      <field name="due_date" invisible="1"/>
-                                     <field name="subscription_period" 
-                            attrs="{'required': [('state','in',['green'])],'invisible': [('state','not in',['green','ord','issue_green','manager','temp','life'])]}"/>
-
+                                     
                                         
                                      <field name="membership_date_from" invisible="1"/>
                                      <field name="membership_date_to" invisible="1"/>
@@ -270,8 +274,11 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                                     attrs="{'readonly':[('state','not in',['green'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['green'])]}"/>
                                    
                                    <field name="green_id" string="Green Card ID:"
-                                    attrs="{'readonly':[('state','not in',['green'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['green'])]}"/>
+                                    attrs="{'readonly':[('state','not in',['issue_green'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['issue_green'])]}"/>
                                    
+                                   <field name="subscription_period" 
+                            attrs="{'required': [('state','in',['green'])],'invisible': [('state','not in',['green','ord','issue_green','manager','temp','life'])]}"/>
+
                                     <field name="package" invisible="0" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" widget="many2many_tags" attrs="{'invisible':[('state','in',['draft','white','issue_green','interview','wait'])],
                                          'required':[('state','not in',['draft','white','issue_green','wait','interview'])]}"/>
                                     <field name="subscription" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" widget="many2many_tags" string="Sections" attrs="{'invisible':[('state','in',['draft','white','issue_green','interview','wait'])],
@@ -313,8 +320,9 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                                         
                                         <field name="package_cost" invisible="0" attrs="{'invisible':[('state','in',['draft','white','interview','wait'])],
                                          'required':[('state','not in',['draft','white','wait','interview'])]}" />
-                                       <field name="member_price" string="Section Cost" attrs="{'invisible': [('state','=','draft')],'required': [('state','!=','draft')],}"/>
-                                    <field name="total" string="Total(Including Section)"/>
+                                       <field name="member_price" string="Section Cost" attrs="{'invisible': [('state','in',['draft','white','wait','interview'])],'required': [('state','!=','draft')],}"/>
+                                    <field name="total" string="Total(Including Section)"
+                                    attrs="{'invisible': [('state','in',['draft','white','wait','interview'])]}"/>
                                     <field name="total_subsequent" string="Total Subsequent" attrs="{'invisible': [('state','not in',['ord','life','hon','account'])],'required': [('state','!=','draft')]}"/>  
                                 </group>
 
@@ -380,6 +388,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                               <p style="color: red;">* See Payments</p>
                               <tree string="Payments" editable="bottom">
                                 <field name="product_id"/>
+                                <field name="name"/>
                                 <field name="member_price" string="Price"/>
                                 <field name="paid_amount" string="Amount Paid"/>
                                 <field name="balance" string="Balance"/>
@@ -523,6 +532,8 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                     <field name="name">MEMBERSHIP</field>
                     <field name="res_model">member.app</field>
                     <field name="view_mode">kanban,tree,form</field>
+                    <field name="domain">[('activity','=', 'act')]</field>
+                     
                     <field name="help" type="html">
                       <p class="oe_view_nocontent_create">
                         Click to create records.
@@ -1004,6 +1015,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                             <field name="sponsor" />
                             
                             <field name="date_order" />
+                            <field name="active"/>
 
                             
                          </group>
@@ -1132,14 +1144,27 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
         <act_window id="non_active_action_main"
             name="Non Active"
             res_model="member.app"
-            domain="[('active','=', False)]"
+            domain="[('activity','=', 'inact')]"
             view_mode="tree,form"/>
+    
+        <act_window id="dormant_action_main"
+            name="Dormant"
+            res_model="member.app"
+            domain="[('activity','=', 'dom')]"
+            view_mode="tree,form"/>
+
+
+        <!-- #################v  CRON  ###############################-->
+
+        
+        
 
 
       <menuitem id ="menu_memapp_all" name="Membership" sequence="2" action="memapp_action" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
           <menuitem id ="menu_memapp_all_rec" name="Create Membership" parent="menu_memapp_all" sequence="1"/>
               <menuitem id ="menu_memapp_sub_rec" name="Members" sequence="1" parent="menu_memapp_all_rec" action="memapp_action"/>
                 <menuitem id ="menu_non_memapp_sub_rec" name="Non Active Members" sequence="2" parent="menu_memapp_all_rec" action="non_active_action_main"/>
+                <menuitem id ="menu_dormant_memapp_sub_rec" name="Dormant Members" sequence="3" parent="menu_memapp_all_rec" action="dormant_action_main"/>
 
           <menuitem id ="menu_memapp_fil_rec" name="Membership Filter" parent="menu_memapp_all" sequence="2" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
               <menuitem id ="menu_memapp_white_rec" name="White Prospect" sequence="1" parent="menu_memapp_fil_rec" action="badge_white_action"/>
@@ -1150,7 +1175,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                
 
         <menuitem id ="menu_memapp_fil_dep" name="Dependants" parent="menu_memapp_all" sequence="3" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
-              <menuitem id ="menu_memapp_dep_rec" name="Members" sequence="1" parent="menu_memapp_fil_dep" action="register_spouse_action"/>
+              <menuitem id ="menu_memapp_dep_rec" name="Spouse Inclusion" sequence="1" parent="menu_memapp_fil_dep" action="register_spouse_action"/>
           
       <menuitem id ="menu_memapp_rec" name="Configuration" sequence="10" parent="menu_memapp_all" groups="base.group_system,member_app.manager_member_ikoyi"/>
 
