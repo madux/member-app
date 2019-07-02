@@ -355,6 +355,7 @@ class App_Member(models.Model):
     binary_attach_interview = fields.Binary('Attach Upload Report')
     binary_fname_interview = fields.Char('Interview Report')
     
+    @api.one
     @api.onchange('subscription_period')
     def get_all_packages(self):
         for rex in self:

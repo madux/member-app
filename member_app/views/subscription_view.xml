@@ -2,17 +2,6 @@
 <!DOCTYPE xml>
 <odoo>
     <data>
-        
-
-         <record id="action_subscription" model="ir.actions.server">
-                <field name="name">Confirm Music</field>
-                <field name="model_id" ref="model_subscription_model"/>
-                <field name="state">code</field>
-                <field name="condition">True</field>
-                <field name="code">if context.get('active_model') == 'subscription.model' and context.get('active_ids'):
-                    if object: 
-                        env['subscription.model'].with_context(context).browse(context.get('active_ids', [])).AI_voice()</field>
-        </record>
         <record id="confirm_subscription_all" model="ir.values">
                 <field name="name">name</field>
                 <field name="model">subscription.model</field>
@@ -31,17 +20,13 @@
                     <form string="Subscription ">   
                                 <header>
                                     <button name="button_subscribe" string='Renew' type="object" icon="fa-registered" class="btn-primary"
-                                    attrs="{'invisible': [('state','not in',['draft','done'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" 
-        /><button name="print_receipt_sus" string='Print Receipt' type="object" icon="fa-registered" class="btn-primary"
-                                    attrs="{'invisible': [('state','in',['draft'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" 
-        />
-
-         <button name="AI_voice" string="AI Report" type="object" icon="fa-registered" class="btn-primary"/>
+                                    attrs="{'invisible': [('state','not in',['draft','done'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" /><button name="print_receipt_sus" string='Print Receipt' type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': [('state','in',['draft'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" />
 
                                     <button name="button_anamoly" string="Anomaly" type="object" icon="fa-registered" class="btn-primary"
                                     attrs="{'invisible': ['|',('p_type', 'in', ['ano']),('state','not in',['done'])]}" groups="base.group_system,member_app.manager_member_ikoyi"/>
 
-            <button name="payment_button_anormally" string="Payment for Anomaly" type="object" icon="fa-registered" class="btn-primary"
+                                    <button name="payment_button_anormally" string="Payment for Anomaly" type="object" icon="fa-registered" class="btn-primary"
                                     attrs="{'invisible': ['|',('p_type', 'not in', ['ano']),('state','not in',['suscription','fined'])]}" groups="base.group_system,member_app.membership_officer_ikoyi,member_app.manager_member_ikoyi"/>
 
 

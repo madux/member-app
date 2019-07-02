@@ -6,10 +6,6 @@ from odoo.tools import misc, DEFAULT_SERVER_DATETIME_FORMAT
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
 from odoo import http
-
-
-from gtts import gTTS
-import os
  
 
 TYPE2JOURNAL = {
@@ -30,27 +26,7 @@ class Subscription_Member(models.Model):
          'UNIQUE(partner_id)',
          'Partner must be unique')
     ]
-    
-    
-    
-    @api.multi
-    def AI_voice(self):
-        s = []
-        '''with open(fname, 'r') as f:
-            for line in f:
-                s.append(line)'''
-        member = self.env['member.app'].search([])
-        for rec in member: 
-            s.append(rec.partner_id.name + " registered using " + rec.phone + " as Phone Number")
-        
-        text = str(s)
-        obj = gTTS(text=text, lang='en', slow=False)
-        obj.save("/welcome.mp3") # Documents
-        os.system("/welcome.mp3")
-        print "Done"
-        
-
-
+   
     @api.multi
     def name_get(self):
         result = []
