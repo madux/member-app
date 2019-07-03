@@ -1,17 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE xml>
 <odoo>
-    <data>
-        <record id="confirm_subscription_all" model="ir.values">
-                <field name="name">name</field>
-                <field name="model">subscription.model</field>
-                <field name="key" >action</field>
-                <field name="key2">client_action_multi</field>
-                <field name="value" eval="'ir.actions.server,%d' %action_subscription"/>
-        </record>
-
-
-
+    <data> 
         <record model="ir.ui.view" id="subscription_formxfvv">
                 <field name="name">subscription</field>
                 <field name="model">subscription.model</field>
