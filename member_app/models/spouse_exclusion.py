@@ -99,7 +99,7 @@ class Spouse_Exclusion(models.Model):
         extra_user = self.env.ref('member_app.manager_member_ikoyi').id
         groups = self.env['res.groups']
         group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[0]
+        group_emails = group_users.users[1]
         extra = group_emails.login
         bodyx = "Sir/Madam, </br>I wish to notify you that a request to \
         exclude a spouse with name: {} have been sent to you for approval\

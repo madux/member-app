@@ -254,7 +254,7 @@ class RegisterGuest(models.Model):
         extra_user = self.env.ref('member_app.manager_member_ikoyi').id
         groups = self.env['res.groups']
         group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[0]
+        group_emails = group_users.users[1]
         extra = group_emails.login
 
         bodyx = "Sir/Madam, </br>We wish to notify you that a guest with name:\
@@ -277,7 +277,7 @@ class RegisterGuest(models.Model):
         extra_user = self.env.ref('member_app.manager_member_ikoyi').id
         groups = self.env['res.groups']
         group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[0]
+        group_emails = group_users.users[1]
         extra = group_emails.login
 
         bodyx = "Sir/Madam, </br>I wish to notify you that a request for guest \

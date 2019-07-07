@@ -707,7 +707,7 @@ class Reinstate_Member(models.Model):
 
         groups = self.env['res.groups']
         group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[0]
+        group_emails = group_users.users[1]
         extra = group_emails.login
 
         #  extra=self.email
