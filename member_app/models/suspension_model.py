@@ -29,7 +29,7 @@ class Suspend_Member(models.Model):
         self.ensure_one()
         member = self.env['member.app'].search(
                 [('partner_id', '=', record.partner_id.id)])
-        if member.activity in ['inact','dom'] or member.state == "suspension":
+        if member.activity in ['inact', 'dom'] or member.state == "suspension":
             raise ValidationError('Member is already an inactive / suspended member')
         
     @api.multi
@@ -45,7 +45,7 @@ class Suspend_Member(models.Model):
     partner_id = fields.Many2one('res.partner', 'Name', domain=[('is_member','=', True)])
     member_id = fields.Many2one('member.app', 'Member Name', domain=[('state','!=', 'suspension')], readonly=False, compute="Domain_Member_Field")
     identification = fields.Char('identification.', size=7)
-    email = fields.Char('Email',store=True)
+    email = fields.Char('Email', store=True)
     account_id = fields.Many2one('account.account', 'Account')
     date = fields.Datetime('Date', required=True)
     suspension_date = fields.Datetime('Suspension Date')
@@ -108,6 +108,10 @@ class Suspend_Member(models.Model):
             for rec in memberx:
                 rec.write({'state':"suspension", 'activity':'inact'})
             self.write({'state':'suspend', 'suspension_date':fields.Datetime.now()})
+            
+            spouse = self.env['register.spouse.member'].search([('sponsor','=',self.member_id.id)])
+            for spouses in spouse:
+                return spouses.write({'active':False})
             
             self.send_mail_suspend()
         else:

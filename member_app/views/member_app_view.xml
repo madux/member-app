@@ -34,11 +34,10 @@
                         <group>
 
                             <field name="partner_id" required="1"/>
-
                             <field name="member_ref" required="1" invisible="0"/>
-   
                             <field name="name" required="1"/>
                             <field name="p_type" required="0"/>
+                            <field name="mode_payment" required="0"/>
                             <field name="to_pay" widget="monetary"/>
                             <field name="amount" widget="monetary"/>
                             <field name="num" invisible="1"/>
@@ -142,7 +141,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                              </header>
                                 <sheet>
                                     <div class="oe_button_box" name="button_box">
-                                    <button name="membership_invoice" string="Create Invoice" type="object" icon="fa-registered"  class="oe_stat_button"
+                                    <button name="membership_invoice" string="Create Invoice" type="object" icon="fa-registered" invisible ="1" class="oe_stat_button"
                                         attrs="{'invisible': ['|',('asso_member', '=', True),('state','in',['draft','interview','induction','hon'])]}"/>
                                     <button name="print_receipt" string="Print Receipt" type="object" icon="fa-registered"  class="oe_stat_button"/>
                                     
@@ -271,7 +270,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                                     attrs="{'required': [('state','in',['induction'])],'invisible': [('state','in',['draft','white'])], 'readonly':[('state','not in',['induction'])]}" placeholder=" eg. A34555"/>
                                     
                                     <field name="temp_id"
-                                    attrs="{'readonly':[('state','not in',['green'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['green'])]}"/>
+                                    attrs="{'readonly':[('state','not in',['temp'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['temp'])]}"/>
                                    
                                    <field name="green_id" string="Green Card ID:"
                                     attrs="{'readonly':[('state','not in',['issue_green'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['issue_green'])]}"/>
@@ -976,7 +975,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                                     
-                                    <button name="see_breakdown_invoice" string="See Invoices" type="object" class="oe_stat_button" icon="fa-shirtsinbulk" attrs="{'invisible':[('state','=','draft')]}">
+                                    <button name="see_breakdown_invoice" string="See Invoices" type="object" class="oe_stat_button" icon="fa-shirtsinbulk" invisible ="1" attrs="{'invisible':[('state','=','draft')]}">
                                             <!--<field name="see_invoice" widget="boolean_button" options="{&quot;terminology&quot;: &quot;archive&quot;}"/>-->
                                         </button>
 

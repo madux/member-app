@@ -32,12 +32,11 @@ class Subscription_Member(models.Model):
         result = []
         for record in self:
             result.append(
-                (record.id,u"%s - %s" % (record.member_id.partner_id.name, record.identification) 
+                (record.id, u"%s - %s" % (record.member_id.partner_id.name, record.identification) 
                  ))
             record.name = result
         return result
     # url_audio = fields.Char('Audio.', size=6)
-    
     partner_id = fields.Many2one(
         'res.partner', 'Name', domain=[
             ('is_member', '=', True)])
@@ -51,7 +50,6 @@ class Subscription_Member(models.Model):
         readonly=False,
         compute="Domain_Member_Field")
     identification = fields.Char('Identification.', size=6)
-    
     email = fields.Char('Email', store=True)
     account_id = fields.Many2one('account.account', 'Account')
     date = fields.Datetime('Date', required=True)
@@ -74,6 +72,7 @@ class Subscription_Member(models.Model):
                               ('suscription', 'Suscribed'),
                               ('manager_approve', 'F&A Manager'),
                               ('fined', 'Fined'),
+                              ('partial', 'Partially Paid'),
                               ('done', 'Done'),
                               ], default='draft', string='Status')
 
@@ -83,12 +82,37 @@ class Subscription_Member(models.Model):
                                ('sub', 'Subscription'),
 
                                ], default='normal', string='Type')
+    invoice_id = fields.Many2one('account.invoice', string='Invoice', store=True)
+
+    # @api.onchange('partner_id')
+    # def onchange_partner_invoice(self):
+    #     res = {}
+    #     if self.partner_id:
+    #         res['domain'] = {'invoice_id': [('partner_id', 'in', [item.id for item in self.partner_id])]}
+    #     return res
+    @api.onchange('partner_id')
+    def onchange_partner_invoice(self):
+        res = {}
+        if self.partner_id:
+            res['domain'] = {'invoice_id': [('partner_id', '=', self.partner_id.id)]}
+        return res
 
     # # # # 
     periods_month = fields.Selection([
-                                      ('1st Half', 'Ist Half'),
-                                      ('Full Year', 'Full Year'),
-                                      ('2nd Half', '2nd Half'),
+                                      ('1st Half', 'January-June 2015'),
+                                      ('Full Year', 'July-Dec 2015'),
+                                      ('2nd Half', 'January-June 2016'),
+                                      ('jd2016', 'July-Dec 2016'),
+                                      ('jj2017', 'January-June 2017'),
+                                      ('jd2017', 'July-Dec 2017'),
+                                      ('jj2018', 'January-June 2018'),
+                                      ('jd2018', 'July-Dec 2018'),
+                                      ('jj2019', 'January-June 2019'),
+                                      ('jd2019', 'July-Dec 2019'),
+                                      ('jj2020', 'January-June 2020'),
+                                      ('jd2020', 'July-Dec 2020'),
+                                      ('jj2021', 'January-June 2021'),
+                                      ('jd2021', 'July-Dec 2021'),
 
                                       ],default="1st Half", string='Subscription Periods', required=True)
 
@@ -217,15 +241,17 @@ class Subscription_Member(models.Model):
         return self.payment_button_normal()
 
     @api.multi
-    def payment_button_normal(self):  #  suscription, 
-        name = "."
+    def payment_button_normal(self):  # suscription, 
+        '''name = "."
         amount = 0.0  #  * percent
         level = ''
         if self.p_type != "ano":
             level = 'Renewed Subscription'
             amount = self.total
             name = "Renewed Subscription"
-            return self.button_payments(name, amount, level)
+            return self.button_payments(name, amount, level)'''
+        self.create_member_bill()
+
     @api.multi
     def print_receipt_sus(self):
         report = self.env["ir.actions.report.xml"].search(
@@ -233,12 +259,13 @@ class Subscription_Member(models.Model):
         if report:
             report.write({'report_type': 'qweb-pdf'})
         return self.env['report'].get_action(
-            self.id, 'member_app.subscription_receipt_template')    
+            self.id, 'member_app.subscription_receipt_template')
+
     @api.multi
-    def payment_button_anormally(self):  #  suscription, manager_approve
+    def payment_button_anormally(self):  # suscription, manager_approve
         name = "."
         percent = 12.5 / 100
-        amount = 0.0  #  * percent
+        amount = 0.0  # * percent
         level = ''
         if self.p_type == "ano":
             level = 'Fine'
@@ -246,7 +273,7 @@ class Subscription_Member(models.Model):
             name = "Fine"
             return self.button_payments(name, amount, level)
 
-# #  FUNCTIONS # # # # # 
+# #  FUNCTIONS # # # #
     @api.multi
     def send_mail_suspend(self, force=False):
         email_from = self.env.user.company_id.email
@@ -318,26 +345,96 @@ class Subscription_Member(models.Model):
                 'default_to_pay': amount,
                 'default_num':self.id,
                 'default_p_type': self.p_type,
-
-                #  'default_communication':self.number
             },
         }
-        
-        
+
+    @api.multi
+    def create_member_bill(self):
+        """ Create Customer Invoice for vendors.
+        """
+        invoice_list = []
+        qty = 1
+        for partner in self:
+            invoice = self.env['account.invoice'].create({
+                'partner_id': partner.member_id.partner_id.id,
+                'account_id': partner.member_id.partner_id.property_account_payable_id.id,#partner.account_id.id,
+                'fiscal_position_id': partner.member_id.partner_id.property_account_position_id.id,
+                'branch_id': self.env.user.branch_id.id,
+                'origin': self.identification,
+                'date_invoice': datetime.today(),
+                'type': 'out_invoice', # vendor
+                # 'type': 'out_invoice', # customer
+            })
+            for line in self.subscription:
+                product = 0
+                products = self.env['product.product']
+                product_search = products.search(
+                    [('name', '=ilike', line.name)])
+                if product_search:
+                    product = product_search[0].id
+                else:
+                    name = self.env['product.product'].create({'name': line.name, 
+                                                               'type': 'service',
+                                                               'membershipx': True,
+                                                               'list_price': line.member_price})
+                    product = name.id
+                prods = products.search(
+                    [('id', '=', product)])
+                line_values = {
+                    'product_id': prods.id, # partner.product_id.id,
+                    'price_unit': prods.list_price,
+                    'quantity': qty, # name.product_qty,
+                    'price_subtotal': prods.list_price * qty,
+                    'invoice_id': invoice.id,
+                    'account_id': self.member_id.partner_id.property_account_payable_id.id,
+                    }
+                # create a record in cache, apply onchange then revert back to a dictionary 
+                invoice_line = self.env['account.invoice.line'].new(line_values)
+                invoice_line._onchange_product_id()
+                line_values = invoice_line._convert_to_write(
+                    {name: invoice_line[name] for name in invoice_line._cache})
+                invoice.write({'invoice_line_ids': [(0, 0, line_values)]})
+                invoice_list.append(invoice.id)
+            # invoice.compute_taxes()
+            self.write({'invoice_id': [(4, [invoice.id])]})
+            find_id = self.env['account.invoice'].search(
+                [('id', '=', invoice.id)])
+            find_id.action_invoice_open()
+
+        return invoice_list
+
+    @api.multi
+    def generate_receipt(self):  # verify,
+
+        search_view_ref = self.env.ref(
+            'account.view_account_invoice_filter', False)
+        form_view_ref = self.env.ref('account.invoice_form', False)
+        tree_view_ref = self.env.ref('account.invoice_tree', False)
+
+        return {
+            'domain': [('id', 'in', [item.id for item in self.invoice_id])],
+            'name': 'Invoices',
+            'res_model': 'account.invoice',
+            'type': 'ir.actions.act_window',
+            'views': [(tree_view_ref.id, 'tree'), (form_view_ref.id, 'form')],
+            'search_view_id': search_view_ref and search_view_ref.id,
+        }
+
+
 class RegisterPaymentMemberx(models.Model):
     _inherit = "register.payment.member"
     _order = "id desc"
-    @api.multi
-    def button_pay(self,values):
+    '''@api.multi
+    def button_pay(self, values):
         self.ensure_one()
         ids = values.get('member_ref')
-        data = super(RegisterPaymentMemberx,self).button_pay()
+        data = super(RegisterPaymentMemberx, self).button_pay()
         mem = self.env['subscription.model'].search([('id','=', self.num)])
         if mem:
-            #raise Validation('Fire %d' %mem.id)
-            mem.write({'state':'done'})
-            
-        return data
+            # raise Validation('Fire %d' %mem.id)
+            mem.write({'state': 'done'}) 
+        return data'''
+
 
 class subscription_LineMain(models.Model):
     _name = "subscription.line"
@@ -357,8 +454,19 @@ class subscription_LineMain(models.Model):
         'Subscription Date',
         default=fields.Date.today(),
         required=True)
-    periods_month = fields.Selection([('1st Half', '1st Half'),
-                                      ('2nd Half', '2nd Half'),
-                                      ('Full Year', 'Full Year'),
+    periods_month = fields.Selection([('1st Half', 'January-June 2015'),
+                                      ('2nd Half', 'July-Dec 2015'),
+                                      ('Full Year', 'January-June 2016'),
+                                      ('jd2016', 'July-Dec 2016'),
+                                      ('jj2017', 'January-June 2017'),
+                                      ('jd2017', 'July-Dec 2017'),
+                                      ('jj2018', 'January-June 2018'),
+                                      ('jd2018', 'July-Dec 2018'),
+                                      ('jj2019', 'January-June 2019'),
+                                      ('jd2019', 'July-Dec 2019'),
+                                      ('jj2020', 'January-June 2020'),
+                                      ('jd2020', 'July-Dec 2020'),
+                                      ('jj2021', 'January-June 2021'),
+                                      ('jd2021', 'July-Dec 2021'),
 
                                       ], string='Periods', required=True)

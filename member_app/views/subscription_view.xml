@@ -23,7 +23,10 @@
                                     <button name="send_Finmanager_Fine" string="Confirm Anomaly" type="object" icon="fa-registered" class="btn-primary"
                                     attrs="{'invisible': [('state','not in',['manager_approve'])]}" groups="base.group_system,ikoyi_module.account_boss_ikoyi"/>
                                     
-                                     <button name="payment_button_normal" string="Register Payment" type="object" icon="fa-registered" class="btn-primary"
+                                     <button name="payment_button_normal" string="Create Invoice" type="object" icon="fa-registered" class="btn-primary"
+                                    attrs="{'invisible': ['|',('p_type', 'in', ['ano']),('state','not in',['suscription'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
+                                    
+                                    <button name="generate_receipt" string="Register Payment" type="object" icon="fa-registered" class="btn-primary"
                                     attrs="{'invisible': ['|',('p_type', 'in', ['ano']),('state','not in',['suscription'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
 
                                     <field name="state" widget="statusbar" statusbar_visible="draft,suscription,done,fined"/>
@@ -37,10 +40,10 @@
                             </h1>
                         <group colspan= "2" attrs="{'readonly': [('state','not in',['draft'])]}">
                             <group>
-                                <field name="member_id" string="Member Name" attrs="{'readonly':[('state','not in',['draft'])]}" />
-                                <field name="email" widget="email" attrs="{'readonly':[('state','not in',['draft'])]}"  />
+                                <field name="member_id" string="Member Name" readonly ="1"/><!-- attrs="{'readonly':[('state','in',['draft'])]}" />-->
+                                <field name="email" widget="email" readonly ="1"/>
                                 <field name="account_id" options="{&quot;no_open&quot;: True}" />
-                                <field name="identification" string = "Member ID" attrs="{'readonly':[('state','not in',['draft'])]}"/>                      
+                                <field name="identification" string = "Member ID" readonly ="1"/>            
                             </group>
                             <group>
                                 <field name="date" string="Request Date" attrs="{'readonly':[('state','not in',['draft'])]}" />
@@ -48,6 +51,8 @@
                                 <field name="users_followers" widget="many2many_tags"/>
                                 <field name="periods_month" attrs="{'readonly':[('state','not in',['draft'])]}" />
                                 <field name="p_type" widget="radio" options ="{'horizontal':true}"/>
+                                <field name="invoice_id" string="Invoice" widget="many2many_tags"/>
+                                   
                                 
                                 <field name="total"/>
                                 <!--<field name="url_audio" widget="audio_field" options="{'show_on_edit_mode':True}"
@@ -67,6 +72,7 @@
                                     <field name="member_price" string = "subscription Amount"/>                               
                                     <field name="subscription_period" string="Subscription Period"/>
                                     <field name="pdate" string="Date"/>
+                                     
                                 </tree>
                                 </field>
                                 <separator string="Packages" colspan="4"/>

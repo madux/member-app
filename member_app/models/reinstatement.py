@@ -111,8 +111,17 @@ class Reinstate_Member(models.Model):
 
     binary_attach_proof = fields.Binary('Payment Proof') # required in wait
     binary_fname_proof = fields.Char('Attach Proof')
-    
-    
+
+    @api.onchange('member_id')
+    def onchange_member_id(self):
+        res = {}
+        if self.member_id:
+            res['domain'] = {
+                'invoice_id': [('partner_id', '=', self.member_id.partner_id.id), ('state', '!=', 'paid')],
+                }
+        return res
+
+
     @api.depends('payment_renew','payments_all')
     def get_all_cost(self):
         total_bal = 0.0

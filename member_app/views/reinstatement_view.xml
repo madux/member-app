@@ -84,11 +84,11 @@
                                     </div>
                             <label for="Name" class="oe_edit_only"/>
                             <h1>
-                                <field name="member_id" default_focus="1" placeholder="Name" string="Member Name" attrs="{'readonly':[('state','not in',['draft'])]}" />
+                                <field name="member_id" domain="[('state', '=', 'suspension')]" default_focus="1" placeholder="Name" string="Member Name" attrs="{'readonly':[('state','not in',['draft'])]}" />
                             </h1>
                         <group colspan= "2" attrs="{'readonly': [('state','not in',['draft'])]}">
                             <group>
-                                <field name="binary_attach_letter" filename="binary_fname_letter" attrs="{'required':[('state','in',['draft'])]}" invisible="0"/>
+                                <field name="binary_attach_letter" filename="binary_fname_letter" invisible="0"/>
                                 <field name="binary_fname_letter" required="0" invisible="1" /> 
                                 <field name="email" widget="email" attrs="{'readonly': [('state','not in',['draft'])]}"/>
                                 

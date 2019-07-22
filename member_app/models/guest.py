@@ -94,7 +94,7 @@ class RegisterGuest(models.Model):
             ('membershipx', '=', True)], required=False)
     member_price = fields.Float(
         string='Section Cost',
-        required=True,
+        required=False,
         readonly=False)
     total = fields.Integer('Total Amount', default=60000, required=True)#compute='get_totals')
     date_order = fields.Datetime('Offer Date', default=fields.Datetime.now())
@@ -254,9 +254,10 @@ class RegisterGuest(models.Model):
         extra_user = self.env.ref('member_app.manager_member_ikoyi').id
         groups = self.env['res.groups']
         group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[1]
-        extra = group_emails.login
-
+        extra = str(email_from)
+        if group_users:
+            group_emails = group_users.users[1]
+            extra = group_emails.login
         bodyx = "Sir/Madam, </br>We wish to notify you that a guest with name:\
          {} applies for guest membership on the date: {}.</br>\
              Kindly <a href={}> </b>Click <a/> to Login to the ERP to view \
@@ -277,8 +278,10 @@ class RegisterGuest(models.Model):
         extra_user = self.env.ref('member_app.manager_member_ikoyi').id
         groups = self.env['res.groups']
         group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[1]
-        extra = group_emails.login
+        extra = str(email_from)
+        if group_users:
+            group_emails = group_users.users[1]
+            extra = group_emails.login
 
         bodyx = "Sir/Madam, </br>I wish to notify you that a request for guest \
          membership with name: {} have been approve on the date: {}.</br>\
@@ -422,7 +425,7 @@ class RegisterGuest(models.Model):
             line_values['price_unit'] = amount
             invoice.write({'invoice_line_ids': [(0, 0, line_values)]})
             invoice_list.append(invoice.id)
-            invoice.compute_taxes()
+            # invoice.compute_taxes()
 
             partner.invoice_id = invoice.id
 

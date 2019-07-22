@@ -174,7 +174,7 @@ class App_Member(models.Model):
                                         'Paid')],
                                       default='draft',
                                       string='Payment status')
-    identification = fields.Char('ID No.', size=6)
+    identification = fields.Char('ID No.', size=8)
     payment_line = fields.One2many(
         'member.payment',
         'member_id',
@@ -315,7 +315,7 @@ class App_Member(models.Model):
         readonly=False,
         compute='get_package_cost')
     green_id = fields.Char('Green Card ID.', size=9)
-    temp_id = fields.Char('Temporary ID No.', size=6)
+    temp_id = fields.Char('Temporary ID No.', size=9)
     date_of_temp = fields.Datetime('Date of Temp. Confirmation')
     
     coffee = fields.Boolean('Coffee Fee', default=True)
@@ -349,13 +349,11 @@ class App_Member(models.Model):
     coffee_book = fields.Float(
                                 'Coffee Book Fee', 
                                 default=10000.00, required=True)
-    harmony = fields.Float(
-                                'Harmony Magazine Fee', 
-                                default=2000.00, required=True)
+    harmony = fields.Float('Harmony Magazine Fee', default=2000.00, required=True)
     binary_attach_interview = fields.Binary('Attach Upload Report')
     binary_fname_interview = fields.Char('Interview Report')
     
-    @api.one
+    # @api.one
     @api.onchange('subscription_period')
     def get_all_packages(self):
         for rex in self:
@@ -554,7 +552,7 @@ class App_Member(models.Model):
     @api.multi
     def button_confirm_white_delay_payments(self):  #  state draft
         #self.date_pickup = fields.Datetime.now()
-        name = "Form Delay Payment Fee" or "{} Payment".format(
+        name = "Late Submission Fee" or "{} Payment".format(
             str(self.state).upper())
         self.write({'payment_status': 'open'})
 
@@ -847,7 +845,7 @@ class App_Member(models.Model):
     @api.multi
     def button_make_induction(self):
         for rec in self:
-            if rec.state == "temp":
+            if rec.state == "temp" and rec.temp_id != False:
                 start = rec.date_of_temp
                 end = fields.Datetime.now()
                 if start and end:
@@ -992,7 +990,7 @@ class App_Member(models.Model):
             mail_id = order.env['mail.mail'].create(mail_data)
             order.env['mail.mail'].send(mail_id)
 
-    @api.multi
+    @api.one
     def life_member(self):
         for rec in self:
             if rec.state == "ord":
@@ -1012,7 +1010,10 @@ class App_Member(models.Model):
                             'You cannot confirm to life membership because the\
                                                Member\'s age must not be lower than 65 years<br/>\
                                               and Membership period Must be up to 25 years')
-            return True
+                    else:
+                        raise ValidationError(
+                                        'Please the date of Temporarily confirmation must be greater than 20 years')
+            # return True
 
     @api.multi
     def send_mail_life(self, force=False):
@@ -1959,6 +1960,12 @@ class RegisterPaymentMember(models.Model):
                                ('ano', 'Anomaly'),
                                ('normal', 'Normal'),
                                ], default='normal', string='Payment type')
+    
+    mode_payment = fields.Selection([('Transfer', 'Transfer'),
+                               ('POS', 'POS'),
+                               ('CHEQUE', 'CHEQUE'),
+                               ('BANK DRAFT', 'BANK DRAFT'),
+                               ], default='normal', string='Payment type')
     num = fields.Float('Number')
     
     @api.one
@@ -1977,8 +1984,8 @@ class RegisterPaymentMember(models.Model):
                 'member_id': rey.member_ref.id,
                 'communication': "Membership Payment " + str(rey.name),
                 'payment_method_id': acm.id,
-                'filex': rey.filex,  #  values.get('advance_account')
-            }
+                'filex': rey.filex,  # values.get('advance_account')
+                            }
             payment_model = self.env['account.payment'].create(payment_data)
 
             model_name = 'account.payment'
@@ -1989,9 +1996,7 @@ class RegisterPaymentMember(models.Model):
             search_id = self.env['member.app'].search(
                 [('id', '=', self.member_ref.id)])
              
-            sub_id = self.env['subscription.model'].search([('id', '=', self.num)])#.id or False
-                    #[('member_id', '=', self.member_ref.id)])
-
+            sub_id = self.env['subscription.model'].search([('id', '=', self.num)])
             for fec in search_id:  #  level
                 product = 0
                 state_now = str(fec.state).replace('_', ' ').capitalize()

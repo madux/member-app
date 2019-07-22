@@ -38,7 +38,7 @@
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                                     
-                                    <button name="see_breakdown_invoice" string="See Invoices" type="object" class="oe_stat_button" icon="fa-shirtsinbulk" attrs="{'invisible':[('state','=','draft')]}">
+                                    <button name="see_breakdown_invoice" string="View and Pay Invoices" type="object" class="oe_stat_button" icon="fa-shirtsinbulk" attrs="{'invisible':[('state','=','draft')]}">
                                             <!--<field name="see_invoice" widget="boolean_button" options="{&quot;terminology&quot;: &quot;archive&quot;}"/>-->
                                         </button>
 
@@ -118,8 +118,8 @@
                             
                          </group>
                          <group>
-                            <field name="member_price" readonly="0"/>
-                            <field name="package_cost"/>
+                            <field name="member_price" invisible="1" readonly="0"/>
+                            <field name="package_cost" invisible="1"/>
                             <field name="total"/>
                             
                          </group>
