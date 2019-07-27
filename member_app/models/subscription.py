@@ -6,7 +6,6 @@ from odoo.tools import misc, DEFAULT_SERVER_DATETIME_FORMAT
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
 from odoo import http
- 
 
 TYPE2JOURNAL = {
     'out_invoice': 'sale',
@@ -99,25 +98,43 @@ class Subscription_Member(models.Model):
 
     # # # # 
     periods_month = fields.Selection([
-                                      ('1st Half', 'January-June 2015'),
-                                      ('Full Year', 'July-Dec 2015'),
-                                      ('2nd Half', 'January-June 2016'),
-                                      ('jd2016', 'July-Dec 2016'),
-                                      ('jj2017', 'January-June 2017'),
-                                      ('jd2017', 'July-Dec 2017'),
-                                      ('jj2018', 'January-June 2018'),
-                                      ('jd2018', 'July-Dec 2018'),
-                                      ('jj2019', 'January-June 2019'),
-                                      ('jd2019', 'July-Dec 2019'),
-                                      ('jj2020', 'January-June 2020'),
-                                      ('jd2020', 'July-Dec 2020'),
-                                      ('jj2021', 'January-June 2021'),
-                                      ('jd2021', 'July-Dec 2021'),
+        ('Jan-June 2011', 'Jan-June 2011'),
+        ('July-Dec 2011', 'July-Dec 2011'),
+        ('Jan-June 2012', 'Jan-June 2012'),
+        ('July-Dec 2012', 'July-Dec 2012'),
+        ('Jan-June 2013', 'Jan-June 2013'),
+        ('July-Dec 2013', 'July-Dec 2013'),
+        ('Jan-June 2014', 'Jan-June 2014'),
+        ('July-Dec 2014', 'July-Dec 2014'),
+        ('Jan-June 2015', 'Jan-June 2015'),
+        ('July-Dec 2015', 'July-Dec 2015'),
+        ('Jan-June 2016', 'Jan-June 2016'),
+        ('July-Dec 2016', 'July-Dec 2016'),
+        ('Jan-June 2017', 'Jan-June 2017'),
+        ('July-Dec 2017', 'July-Dec 2017'),
+        ('Jan-June 2018', 'Jan-June 2018'),
+        ('July-Dec 2018', 'July-Dec 2018'),
+        ('Jan-June 2019', 'Jan-June 2019'),
+        ('July-Dec 2019', 'July-Dec 2019'),
+        ('Jan-June 2020', 'Jan-June 2020'),
+        ('July-Dec 2020', 'July-Dec 2020'),
+        ('Jan-June 2021', 'Jan-June 2021'),
+        ('July-Dec 2021', 'July-Dec 2021'),
+    ], 'Period', index=True, required=False, readonly=False, copy=False, 
+                                           track_visibility='always')
 
-                                      ],default="1st Half", string='Subscription Periods', required=True)
+    duration_period = fields.Selection([
+        ('Months', 'Months'),
+        ('Full Year', 'Full Year'),
+    ], 'Duration to Pay', Default="Months", index=True, required=False, readonly=False, copy=False, 
+                                           track_visibility='always')
 
-    # main_house_cost = fields.Float('Main House Fee',required=True)
-    # # # # 
+    number_period = fields.Integer('No. of Years/Months', default=1)
+    date_end = fields.Datetime(
+        string='End Date',
+        default=fields.Datetime.now,
+    )
+    
     total = fields.Float(
         'Total Subscription Fee',
         required=True,
@@ -127,17 +144,9 @@ class Subscription_Member(models.Model):
     def get_total(self):
         for rec in self:
             tot = 0.0
-            overall = 0.0
-
             for sub in rec.subscription:
                 tot += sub.member_price
 
-            '''if rec.periods_month == 'full_Year':
-                tot = tot * 12
-            elif rec.periods_month == "quarter_ly":
-                tot = tot * 3
-            else:
-                tot = tot'''
             rec.total = tot
 
     @api.depends('partner_id')
@@ -167,8 +176,65 @@ class Subscription_Member(models.Model):
                 record.identification = tec.identification
                 record.email = tec.email
                 record.member_id = tec.id
+                 
+    def _set_dates(self):
+        number = 0
+        if self.duration_period == "Months":
+            number = self.number_period * 30
+            
+        if self.duration_period == "Full Year":
+            number = self.number_period * 365
+            
+        required_date = datetime.strptime(self.date, '%Y-%m-%d %H:%M:%S')
+        self.date_end = required_date + timedelta(days=number)
+        
+    def check_expiry(self):
+        start = datetime.strptime(self.date, '%Y-%m-%d %H:%M:%S')
+        end = datetime.strptime(self.date_end, '%Y-%m-%d %H:%M:%S')
+        cal = end - start
+        total = 0.0
+        if self.duration_period == "Months":
+            total = cal.days
+            record = self.number_period * 30
+            if record > total:
+                self.send_reminder_message()
+                raise ValidationError("The Member's subscription has expired")
+            
+            else:
+                raise ValidationError("The member's subscription has not expired")
+            
+        elif self.duration_period == "Full Year":
+            total = cal.days / 365
+            record = self.number_period * 365
+            if record > total:
+                self.send_reminder_message()
+                # raise ValidationError("The Member's subscription has expired")
+                message = {
+                    'title': 'Subscription Notice',
+                    'message': "The member's subscription has not expired"
+                }
+                
+                return {'warning': message}
+            
+            else:
+                # raise ValidationError("The member's subscription has not expired")
+                message = {
+                    'title': 'Subscription Notice',
+                    'message': "The member's subscription has not expired"
+                }
+                
+                return {'warning': message}
 
- #  BUTTON S
+    def send_reminder_message(self):
+        email_from = self.env.user.company_id.email
+        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
+        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
+        extra = self.email
+        bodyx = "Dear Sir/Madam, </br>We wish to notify that you -ID {} , that your membership subscription has expired and is\
+        due for payment on the date: {} </br> Kindly contact the Ikoyi Club 1968 for any further enquires. \
+        </br>Thanks" .format(self.identification, fields.Datetime.now())
+        self.mail_sending(email_from, group_user_id, extra, bodyx)
+ 
     def button_send_mail(self):  #  draft
         self.send_mail_to_member()
 
@@ -228,8 +294,9 @@ class Subscription_Member(models.Model):
     def button_subscribe(self):  #  draft, fine
         self.write({'state': 'suscription'})
         self.send_mail_to_member_sub()
+        self._set_dates()
 
-    @api.multi  #  suscription , mem_manager
+    @api.multi  # suscription , mem_manager
     def button_anamoly(self):
         self.write({'state': 'manager_approve', 'p_type': 'ano'})
         return self.send_mail_to_accountmanager()
@@ -347,7 +414,7 @@ class Subscription_Member(models.Model):
                 'default_p_type': self.p_type,
             },
         }
-
+     
     @api.multi
     def create_member_bill(self):
         """ Create Customer Invoice for vendors.
@@ -360,7 +427,7 @@ class Subscription_Member(models.Model):
                 'account_id': partner.member_id.partner_id.property_account_payable_id.id,#partner.account_id.id,
                 'fiscal_position_id': partner.member_id.partner_id.property_account_position_id.id,
                 'branch_id': self.env.user.branch_id.id,
-                'origin': self.identification,
+                # 'origin': self.identification,
                 'date_invoice': datetime.today(),
                 'type': 'out_invoice', # vendor
                 # 'type': 'out_invoice', # customer
@@ -382,21 +449,23 @@ class Subscription_Member(models.Model):
                     [('id', '=', product)])
                 line_values = {
                     'product_id': prods.id, # partner.product_id.id,
-                    'price_unit': prods.list_price,
+                    'price_unit': line.member_price,# prods.list_price,
                     'quantity': qty, # name.product_qty,
-                    'price_subtotal': prods.list_price * qty,
+                    'price_subtotal': line.member_price * qty,
                     'invoice_id': invoice.id,
+                    'invoice_line_tax_ids': [],
                     'account_id': self.member_id.partner_id.property_account_payable_id.id,
                     }
                 # create a record in cache, apply onchange then revert back to a dictionary 
                 invoice_line = self.env['account.invoice.line'].new(line_values)
                 invoice_line._onchange_product_id()
                 line_values = invoice_line._convert_to_write(
-                    {name: invoice_line[name] for name in invoice_line._cache})
+                     {name: invoice_line[name] for name in invoice_line._cache})
                 invoice.write({'invoice_line_ids': [(0, 0, line_values)]})
                 invoice_list.append(invoice.id)
             # invoice.compute_taxes()
-            self.write({'invoice_id': [(4, [invoice.id])]})
+            #self.write({'invoice_id': [(4, [invoice.id])]})
+            partner.write({'invoice_id': invoice.id})
             find_id = self.env['account.invoice'].search(
                 [('id', '=', invoice.id)])
             find_id.action_invoice_open()

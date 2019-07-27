@@ -15,47 +15,44 @@ class account_payment(models.Model):
     def post(self):
         res = super(account_payment, self).post()
         # import pdb; pdb.set_trace()
-        account = self.env['account.invoice'].search([('number','ilike', self.communication)])
+        product_name = 'Subscription'
+        product = 0
+        lists = []
+        sub_item = []
+        account = self.env['account.invoice'].search([('number', 'ilike', self.communication)])
         subscription = self.env['subscription.model'].search([('invoice_id', '=', account.id)])#account.id)])
-        if not subscription:
-            raise ValidationError('No Invoice found')
-        elif subscription:
+        if subscription:
+            member_id = subscription.member_id.id
+            member_browse = self.env['member.app'].search([('id', '=', member_id)])
+            
+            products = self.env['product.product']
+            product_search = products.search(
+                    [('name', 'ilike', product_name)])
+            if product_search:
+                product = product_search[0].id
+            else:
+                pro = products.create({'name': product_name, 'membershipx': True})
+                product = pro.id
             for rep in subscription:
-                if rep.total >= self.amount:
+                balance = rep.total - self.amount
+                
+                values = (0, 0,
+                              {'member_idx': member_id,
+                               'product_id': product,
+                               'paid_amount': self.amount,
+                               'balance': balance,
+                               'pdate': self.payment_date,
+                               'member_price': rep.total,
+                               'name': "Subscription Payment"})
+                lists.append(values)
+                for rex in rep.subscription:
+                    sub_item.append(rex.id)
+                if member_browse:
+                    member_browse.balance_total += balance
+                    member_browse.payment_line2 = lists
+                    member_browse.subscription = sub_item
                     rep.write({'state': 'done'})
                 else:
-                    rep.write({'state': 'partial'})
+                    raise ValidationError('We do not find any record related to this member')
+                    
         return res
-
-
-    # @api.multi
-    # def posts(self):
-    #     res = super(account_payment, self).post()
-    #     subscription = self.env['subscription.model'].search([])#([('invoice_id.name', 'in', self.communication)])
-    #     total = 0.0
-    #     lists = []
-    #     for rep in subscription:
-    #         for invs in rep.invoice_id:
-    #             for inv in invs:
-    #                 total += inv.amount_total
-    #                 lists.append(inv.name)
-    #                 if "INV/2019/0076" in lists: #inv.name:
-    #                     if inv.total >= total:
-    #                         rep.write({'state': 'partial'})
-    #                     else:
-    #                         rep.write({'state': 'done'})
-    #                 else:
-    #                     raise ValidationError('No Invoice found')
-    #     return res
-
-    #    if subscription:
-    #         for rec in subscription:
-    #             if rec.total >= self.amount:
-    #                 rec.write({'state': 'partial'})
-    #             else:
-    #                 rec.write({'state': 'done'})
-    #     else:
-    #         raise ValidationError('No Invoice found')
-    #     return res
-        
-    

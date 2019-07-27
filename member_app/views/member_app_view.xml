@@ -40,6 +40,7 @@
                             <field name="mode_payment" required="0"/>
                             <field name="to_pay" widget="monetary"/>
                             <field name="amount" widget="monetary"/>
+                            <field name="spouse_amount"  invisible="1" widget="monetary"/>
                             <field name="num" invisible="1"/>
 
                             <field name="users_followers" widget="many2many_tags" invisible="0"/>
@@ -225,18 +226,19 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                             <group name="container_row_2">
                                 <group string="Membership" name="memb" >
                                     <field name="sponsor"  attrs="{'readonly':[('state','in',['green','temp','ord','jun','life','hon'])]}" widget="many2many_tags" required="1" />
-                                    
 
                                     <field name="date_pickup" string = "White Form Submission" attrs="{'readonly':[('state','in',['green','temp','ord','jun','life','hon'])],
-                                    'invisible':[('state','not in',['wait'])],'required':[('state','in',['wait'])]}"/>
+                                    'invisible':[('state','not in',['wait'])]}"/> 
+                                    <!-- ,'required':[('state','in',['wait'])]}" -->
                                    <field name="date_green_pickup" string="Green Form Submission Date"
-                                        attrs="{'readonly':[('state','not in',['issue_green'])],'invisible':[('state','not in',['issue_green'])],'required':[('state', 'in', ['issue_green'])]}"/>
-
-<field name="date_issue_green" attrs="{'invisible':[('state','not in',['issue_green','green'])]}"/> <!--inx-->
+                                        attrs="{'readonly':[('state','not in',['issue_green'])],'invisible':[('state','not in',['issue_green'])]}"/>
+                                        <!-- ,'required':[('state', 'in', ['issue_green'])] -->
+                                    <field name="date_issue_green" attrs="{'invisible':[('state','not in',['issue_green','green'])]}"/> <!--inx-->
 
                                     <field name="duration_pick" string = "Pickup Duration(Days)" attrs="{'invisible':[('state','not in',['wait'])]}"/>
                                     <field name="date_of_temp" invisible="0" readonly="0" attrs="{'readonly':[('state','not in',['draft','white','green','temp'])],'invisible':[('state','in',['draft','white','issue_green','wait','interview','green'])]}"/>
-                                    <field name="binary_attach_interview" filename="binary_fname_interview" string="Upload Interview Report" attrs="{'required':[('state','in',['interview'])],'invisible':[('state','in',['draft','white','wait'])]}"/>
+                                    <field name="binary_attach_interview" filename="binary_fname_interview" string="Upload Interview Report" attrs="{'invisible':[('state','in',['draft','white','wait'])]}"/> 
+                                    <!--attrs="{'required':[('state','in',['interview'])],'invisible':[('state','in',['draft','white','wait'])]}"/> -->
                                     <field name="binary_fname_interview" required="0" invisible="1" />
          
                                     <field name="product_id" string="Membership Type"  options="{'no_create': True}"/>
@@ -267,24 +269,31 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                                 <group string="Identity &amp; Subscriptions" name="identity">
 
                                     <field name="identification" string="Member ID"
-                                    attrs="{'required': [('state','in',['induction'])],'invisible': [('state','in',['draft','white'])], 'readonly':[('state','not in',['induction'])]}" placeholder=" eg. A34555"/>
+                                    attrs="{'invisible': [('state','in',['draft','white'])], 'readonly':[('state','not in',['induction'])]}" placeholder=" eg. A34555"/>
                                     
                                     <field name="temp_id"
-                                    attrs="{'readonly':[('state','not in',['temp'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['temp'])]}"/>
+                                    attrs="{'readonly':[('state','not in',['temp'])],'invisible':[('state','in',['draft','white','wait','interview'])]}"/>
                                    
-                                   <field name="green_id" string="Green Card ID:"
-                                    attrs="{'readonly':[('state','not in',['issue_green'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['issue_green'])]}"/>
-                                   
+                                   <field name="green_id" string="Green Card ID:" attrs="{'invisible':[('state','in',['draft','white','wait','interview'])]}"/>
+                                    <!-- attrs="{'readonly':[('state','not in',['issue_green'])],'invisible':[('state','in',['draft','white','wait','interview'])],'required': [('state','in',['issue_green'])]}"/>
+                                    -->
                                    <field name="subscription_period" 
-                            attrs="{'required': [('state','in',['green'])],'invisible': [('state','not in',['green','ord','issue_green','manager','temp','life'])]}"/>
+                            attrs="{'invisible': [('state','not in',['green','ord','issue_green','manager','temp','life'])]}"/>
 
-                                    <field name="package" invisible="0" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" widget="many2many_tags" attrs="{'invisible':[('state','in',['draft','white','issue_green','interview','wait'])],
-                                         'required':[('state','not in',['draft','white','issue_green','wait','interview'])]}"/>
-                                    <field name="subscription" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" widget="many2many_tags" string="Sections" attrs="{'invisible':[('state','in',['draft','white','issue_green','interview','wait'])],
-                                         'required':[('state','not in',['draft','white','issue_green','wait','interview'])]}"/>
+                            <field name="duration_period" 
+                            attrs="{'invisible': [('state','not in',['green','ord','issue_green','manager','temp','life'])]}"/>
+                                <!-- 'required': [('state','in',['green'])], -->
+                               
+                            <field name="number_period" 
+                            attrs="{'required': [('duration_period','in',['Months','Full Year'])],'invisible': [('duration_period','not in',['Months','Full Year'])]}"/>
+                                    <field name="package" invisible="0" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" widget="many2many_tags" attrs="{'invisible':[('state','in',['draft','white','issue_green','interview','wait'])]}"/>
+                                    
+                                         <!-- 'required':[('state','not in',['draft','white','issue_green','wait','interview'])] -->
+                                    <field name="subscription" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" widget="many2many_tags" string="Subscriptions" attrs="{'invisible':[('state','in',['draft','white','issue_green','interview','wait'])]}"/>
+                                    <!-- 'required':[('state','not in',['draft','white','issue_green','wait','interview'])] -->
 
                                 </group>
-                                <group string="Payment Plan"> 
+                                <group string="Payment Plan">
                                        <field name="payment_type" invisible="0" attrs="{'readonly':[('state','not in',['draft','white','wait','interview'])]}"/>
                                        <field name="payment_plan" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" readonly="0" attrs="{'invisible': [('payment_type','==','outright')],'required': [('payment_type','==','installment')],'readonly':[('state','not in',['draft','white','wait','interview'])]}"/>
                                        <field name="invoice_id" invisible="1"/>
@@ -315,15 +324,34 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                                          <field name="harmony"
                                          attrs="{'readonly':[('state','in',['draft','white','green','temp','ord','jun','life','hon'])],'invisible':[('state','not in',['draft','white'])],
                                          'required':[('state','in',['draft','white'])]}"/>
-                                        
-                                        
+                                         
                                         <field name="package_cost" invisible="0" attrs="{'invisible':[('state','in',['draft','white','interview','wait'])],
                                          'required':[('state','not in',['draft','white','wait','interview'])]}" />
                                        <field name="member_price" string="Section Cost" attrs="{'invisible': [('state','in',['draft','white','wait','interview'])],'required': [('state','!=','draft')],}"/>
-                                    <field name="total" string="Total(Including Section)"
-                                    attrs="{'invisible': [('state','in',['draft','white','wait','interview'])]}"/>
-                                    <field name="total_subsequent" string="Total Subsequent" attrs="{'invisible': [('state','not in',['ord','life','hon','account'])],'required': [('state','!=','draft')]}"/>  
-                                </group>
+
+                                        <field name="spouse_amount" readonly="1" invisible="0"/>
+                                        
+                                        <div class="oe_title">
+                                            <label string="Total (Without spouse Amount)"/>
+                                                <h1>
+                                                    <field name="total" string="Total (Without spouse Amount)"
+                                                        attrs="{'invisible': [('state','in',['draft','white','wait','interview'])]}"/>
+                                                </h1>
+                                            </div><br/>
+                                            <!-- <div class="oe_title">
+                                            <label string="Subsequent Payment"/>
+                                                <h1>
+                                                     <field name="total_subsequent" string="Total Subsequent" attrs="{'invisible': [('state','not in',['ord','life','hon','account'])],'required': [('state','!=','draft')]}"/>
+                                                </h1>
+                                            </div><br/> -->
+                                            <div class="oe_title">
+                                            <label string="Outstandings"/>
+                                                <h2>
+                                                    <field name="balance_total" string="Outstandings"/>
+                                                </h2>
+                                            </div>
+
+                               </group>
 
                                 <!--<group string="Other Information" attrs="{'invisible':[('state','=','draft')]}">
 
@@ -389,6 +417,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                                 <field name="product_id"/>
                                 <field name="name"/>
                                 <field name="member_price" string="Price"/>
+                                <field name="spouse_amount" string="Spouse amount"/>
                                 <field name="paid_amount" string="Amount Paid"/>
                                 <field name="balance" string="Balance"/>
                                 <field name="penalty_fee"/>
@@ -1058,8 +1087,7 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
             <field name="state">code</field>
             <field name="code">
                 if context.get('active_model') == 'member.app' and context.get('active_ids'):
-                    if object: 
-                        env['member.app'].with_context(context).browse(context.get('active_ids', [])).button_make_induction2()
+                    if object:env['member.app'].with_context(context).browse(context.get('active_ids', [])).button_make_induction2()
             </field>
         </record>
 
@@ -1079,6 +1107,15 @@ icon="fa-registered" class="btn-primary" attrs="{'invisible': [('state','not in'
                 <field name="code">if context.get('active_model') == 'member.app' and context.get('active_ids'):
                     if object: 
                         env['member.app'].with_context(context).browse(context.get('active_ids', [])).function_sendall_interview()</field>
+        </record>
+        <record id="action_send_all_induction" model="ir.actions.server">
+                <field name="name">Send Induction by Mail</field>
+                <field name="model_id" ref="model_member_app"/>
+                <field name="state">code</field>
+                <field name="condition">True</field>
+                <field name="code">if context.get('active_model') == 'member.app' and context.get('active_ids'):
+                    if object: 
+                        env['member.app'].with_context(context).browse(context.get('active_ids', [])).action_send_induction()</field>
         </record>
         <record id="sendtointerviews" model="ir.values">
                 <field name="name">name</field>

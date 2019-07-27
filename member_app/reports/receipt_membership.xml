@@ -28,12 +28,17 @@
 					<div class="header">
 						<div class="row">
 							<div class="col-xs-3" style="font-size: 9px;">
-
-								<!--HHHHHH--> 
-							</div>
-							<div class="col-xs-offset-2 text-right">
+								<!-- <img t-if="o.create_uid.company_id.logo" t-att-src="'data:image/png;base64,%s' %o.create_uid.company_id.logo" style="max-width: 100px; max-height: 80px;"/> -->
+								<p style="text-align: left; font-weight: bold; font-size: 12px;">
+									<span t-esc="o.create_uid.company_id.name"/><br/>
+									<span t-esc="o.create_uid.company_id.street"/>, <span t-esc="o.create_uid.company_id.street2"/>, <span t-esc="o.create_uid.company_id.city"/>,<br/>
+									<span t-esc="o.create_uid.company_id.state_id.name"/>, <span t-esc="o.create_uid.company_id.country_id.name"/>
+								</p>
+                        	</div>
+							
+							<!-- <div class="col-xs-offset-2 text-right">
 								<img src="/ikoyi_module/static/img/ikoyi_logo2.png" style="max-height:80px;max-width:60px;"/>
-							</div>
+							</div> -->
 							<br/>
 
 						</div>
@@ -86,14 +91,25 @@
 									<span><strong>Receipt Allocated As Follows: </strong></span>
                             	</div>
                                 <br/>
-								<t t-if="o.state in ['draft','white','green','interview','wait','issue_green']">
+								<t t-if="o.state in ['white','interview','wait']">
 														<strong>White form Cost: </strong><span t-field="o.int_form_price"/><br/>
 														<strong>Harmony Magazine: </strong><span t-field="o.harmony"/><br/>
+														<strong>Delay Charges: </strong><span t-field="o.delay_charges"/> <br/>
+														
+								</t>
+
+								<t t-if="o.state in ['green','issue_green']">
 														<strong>Green Form Cost: </strong><span t-field="o.green_form_price"/><br/>
+														<strong>Coffee Cost: </strong><span t-field="o.coffee_book"/><br/>
+														<strong>Delay Charges: </strong><span t-field="o.delay_charges"/> <br/>
+														
+								</t>
+								<t t-if="o.state not in ['draft','white','green','interview','wait','issue_green']">
 														<strong>Delay Charges: </strong><span t-field="o.delay_charges"/> <br/>
 														<strong>Main House Cost: </strong><span t-field="o.main_house_cost"/><br/>
-														<strong>Coffee Cost: </strong><span t-field="o.coffee_book"/><br/>
-								</t>
+														
+								</t>	
+								
                                 <br/>
                                 <br/>
                                 <table class="table table-bordered">

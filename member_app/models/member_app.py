@@ -6,6 +6,10 @@ from odoo.tools import misc, DEFAULT_SERVER_DATETIME_FORMAT
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
 from odoo import http
+# Add this to member.app
+# def send_induction_mail(self):
+#     send_induction_mail
+
 
 TYPE2JOURNAL = {
     'out_invoice': 'sale',
@@ -212,6 +216,9 @@ class App_Member(models.Model):
     total_subsequent = fields.Integer(
         'Total Subsequent Subscription',
         compute='get_totals_sub')
+    balance_total = fields.Integer(
+        'Outstandings',
+        )
 
     #  CALCULATE PAYMENT DEADLINE account_id
 
@@ -241,7 +248,7 @@ class App_Member(models.Model):
     binary_fname_letter = fields.Char('Binary Name')
     users_followers = fields.Many2many('hr.employee', string='Add followers')
     date_pickup = fields.Datetime('Date of Form Pickup')
-    date_issue_green = fields.Datetime('Green Card Issued on? ')
+    date_issue_green = fields.Datetime('Green Card Issued on')
     duration_pick = fields.Float(
         'Pickup Duration',
         store=True,
@@ -255,8 +262,6 @@ class App_Member(models.Model):
         required=True,
         default=8000)
     section_heads = fields.Many2many('res.partner', string='Section Heads')
-    #  ON CHANGE OF ASSOCIATE MEMBER change or append the costs on invoice
-    #  lines.
     subscription = fields.Many2many(
         'subscription.payment',
         string='Add Sections')
@@ -293,15 +298,39 @@ class App_Member(models.Model):
                                 track_visibility='always')
 
     subscription_period = fields.Selection([
-        ('eight', '2018'),
-        ('nine', '2019'),
-        ('twen', '2020'),
-        ('twen_one', '2021'),
-        ('twen_two', '2022'),
-        ('twen_three', '2023'),
-        ('twen_four', '2023'),
-        ('twen_five', '2025'),
-    ], 'Period', index=True, required=False, readonly=False, copy=False, track_visibility='always')
+        ('Jan-June 2011', 'Jan-June 2011'),
+        ('July-Dec 2011', 'July-Dec 2011'),
+        ('Jan-June 2012', 'Jan-June 2012'),
+        ('July-Dec 2012', 'July-Dec 2012'),
+        ('Jan-June 2013', 'Jan-June 2013'),
+        ('July-Dec 2013', 'July-Dec 2013'),
+        ('Jan-June 2014', 'Jan-June 2014'),
+        ('July-Dec 2014', 'July-Dec 2014'),
+        ('Jan-June 2015', 'Jan-June 2015'),
+        ('July-Dec 2015', 'July-Dec 2015'),
+        ('Jan-June 2016', 'Jan-June 2016'),
+        ('July-Dec 2016', 'July-Dec 2016'),
+        ('Jan-June 2017', 'Jan-June 2017'),
+        ('July-Dec 2017', 'July-Dec 2017'),
+        ('Jan-June 2018', 'Jan-June 2018'),
+        ('July-Dec 2018', 'July-Dec 2018'),
+        ('Jan-June 2019', 'Jan-June 2019'),
+        ('July-Dec 2019', 'July-Dec 2019'),
+        ('Jan-June 2020', 'Jan-June 2020'),
+        ('July-Dec 2020', 'July-Dec 2020'),
+        ('Jan-June 2021', 'Jan-June 2021'),
+        ('July-Dec 2021', 'July-Dec 2021'),
+    ], 'Period', index=True, required=False, readonly=False, copy=False, 
+                                           track_visibility='always')
+
+    duration_period = fields.Selection([
+        ('Months', 'Months'),
+        ('Full Year', 'Full Year'),
+    ], 'Duration to Pay', Default="Months", index=True, required=False, readonly=False, copy=False, 
+                                           track_visibility='always')
+
+    number_period = fields.Integer('No. of Years/Months', default=1)
+    spouse_amount = fields.Float('Spouse Amount', compute="get_dependents_amount")
 #  Depends on Periods
     package = fields.Many2many(
         'package.model',
@@ -319,7 +348,7 @@ class App_Member(models.Model):
     date_of_temp = fields.Datetime('Date of Temp. Confirmation')
     
     coffee = fields.Boolean('Coffee Fee', default=True)
-    main_house_cost = fields.Float('Main House Fee', required=True)
+    main_house_cost = fields.Float('Main House Fee', required=True) 
     state = fields.Selection([('draft', 'Draft'),
                               ('white', 'White Prospect'),
                               ('wait', 'Waiting List'),
@@ -364,6 +393,14 @@ class App_Member(models.Model):
                 for ret in get_package:
                     appends.append(ret.id)
             rex.package = [(6, 0, appends)]
+            
+    @api.onchange('subscription_period')
+    def domain_subscirption(self):
+        res = {}
+        if self.subscription_period:
+            res['domain'] = {'subscription':[('subscription_period','=', self.subscription_period)]}
+        return res
+
 
 #  calculate package cost
     @api.one
@@ -373,6 +410,15 @@ class App_Member(models.Model):
         for rec in self.package:
             total += rec.package_cost
         self.package_cost = total
+        
+    #  calculate package cost
+    @api.one
+    @api.depends('depend_name')
+    def get_dependents_amount(self):
+        total = 0.0
+        for rec in self.depend_name:
+            total += rec.total
+        self.spouse_amount = total
      
 #  Calculates subscription cost
     @api.one
@@ -387,14 +433,18 @@ class App_Member(models.Model):
     @api.one
     @api.depends('member_price', 'package_cost', 'main_house_cost')
     def get_totals(self):
-        total = 0.00
-        self.total = self.member_price + self.package_cost + self.main_house_cost
+        self.total = self.member_price + self.package_cost + self.main_house_cost + self.spouse_amount
 
-    @api.depends('member_price', 'package_cost')
+    @api.depends('member_price', 'package_cost','main_house_cost', 'spouse_amount')
     def get_totals_sub(self):
         total = 0.00
         for rex in self:
-            rex.total_subsequent = rex.member_price + rex.package_cost
+            rex.total_subsequent = rex.member_price + rex.package_cost + rex.spouse_amount + rex.main_house_cost
+            
+    @api.onchange('partner_id')
+    def get_partner_account(self):
+        for rex in self:
+            rex.account_id = rex.partner_id.property_account_payable_id.id
 
     @api.onchange('product_id')
     def onchange_product(self):
@@ -484,30 +534,7 @@ class App_Member(models.Model):
                 rec.delay_charges = 5000
                 return rec.int_form_price + rec.delay_charges
 
-    @api.multi
-    def button_payments(self, name, amount, level):  #  Send memo back
-        return {
-            'name': name,
-            'view_type': 'form',
-            "view_mode": 'form',
-            'res_model': 'register.payment.member',
-            'type': 'ir.actions.act_window',
-            'target': 'new',
-            'context': {
-                'default_payment_type': "outbound",
-                'default_date': fields.Datetime.now(),
-                'default_amount': amount, #  self.int_form_price,
-                'default_member_id': self.id,
-                'default_partner_id': self.partner_id.id,
-                'default_member_ref': self.id,
-                'default_name': "Member Payments",
-                'default_level': level,
-                'default_to_pay': amount,
-                'default_num':self.id,
-
-                #  'default_communication':self.number
-            },
-        }
+    
 
     @api.multi
     def button_register_spouse(self):  #  Send memo back
@@ -558,11 +585,14 @@ class App_Member(models.Model):
 
         amount = self.delay_charges
         level = 'wait'
-        if self.delay_charges > 0.00:
-            return self.button_payments(name, amount, level)
-        
+        if self.date_pickup or self.date_of_interview:
+            if self.delay_charges > 0.00:
+                return self.button_payments(name, amount, level)
+
+            else:
+                raise ValidationError('There is no penalty fee for this member')
         else:
-            raise ValidationError('There is no penalty fee for this member')
+            raise ValidationError('Please Enter the following fields: "White form submission",  "Date of Interview"')
 
     def sendmail_white_confirm(self, force=False):
         email_from = self.env.user.company_id.email
@@ -575,10 +605,11 @@ class App_Member(models.Model):
              Kindly contact the Ikoyi Club 1938 for further enquires </br> Thanks".format(fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
+
     @api.one
     def button_send_interview(self):  #  state wait
         if self.date_of_interview == False:
-            raise ValidationError('Please you must set Date of Interview')
+            raise ValidationError('Please you must set the field: "Date of Interview"')
             
         else:
             self.write({'state': 'interview'})
@@ -653,15 +684,6 @@ class App_Member(models.Model):
             #  order.penalty_charges = 15000
             
             amount = order.green_form_price + order.coffee_book  
-            values = {
-                'member_id': self.id,
-                'member_price': amount,
-                'pdate': self.date_order,
-                'product_id': product,
-                'paid_amount': amount,
-                'penalty_fee': 0  # self.penalty_charges
-            }
-            
             level = 'interview'
             name = "Interview Card Payment Fee" or "{} Payment Fee".format(
                     str(order.state).upper())
@@ -669,11 +691,7 @@ class App_Member(models.Model):
             order.write(
                 {
                  'date_issue_green': fields.Datetime.now()})
-            '''order.write(
-                {'payment_line': [(0, 0, values)], 
-                 'payment_line2': [(0, 0, values)],
-                 'date_issue_green': fields.Datetime.now()})
-            '''
+             
             self.send_mail_green(name)
             
             return self.button_payments(name, amount, level)
@@ -692,61 +710,61 @@ class App_Member(models.Model):
             mem.write({'payment_status': 'issue', 'state': 'green'})
             self.send_mail_issue_green()
 
-
     @api.multi
     def check_green_delay(self):
         """
         Set the date of green form pickup to the current 
         date(back date to check), if three months, 
         the system brings out payment
-        
         """
         popup_message = "Hurray!!!... There is no penalty charge for the member"
         penalty = 15000
-        for order in self:
-            product = 0
-            state_now = str(order.state).replace('_', ' ').capitalize()
-            products = self.env['product.product']
-            product_search = products.search([('name', 'ilike', state_now)])
-            if product_search:
-                product = product_search[0].id
-            else:
-                pro = products.create({'name': state_now, 'membershipx': True})
-                product = pro.id
+        if self.date_green_pickup or self.green_id:
+            for order in self:
+                product = 0
+                state_now = str(order.state).replace('_', ' ').capitalize()
+                products = self.env['product.product']
+                product_search = products.search([('name', 'ilike', state_now)])
+                if product_search:
+                    product = product_search[0].id
+                else:
+                    pro = products.create({'name': state_now, 'membershipx': True})
+                    product = pro.id
 
-            total_duration = 0.0
-            start = order.date_issue_green
-            end = fields.Datetime.now()
-            if start and end:
-                server_dt = DEFAULT_SERVER_DATETIME_FORMAT
-                strt = datetime.strptime(start, server_dt)
-                ends = datetime.strptime(end, server_dt)
-                durations = ends - strt
-                total_duration = durations.days # / 365
+                total_duration = 0.0
+                start = order.date_issue_green
+                end = fields.Datetime.now()
+                if start and end:
+                    server_dt = DEFAULT_SERVER_DATETIME_FORMAT
+                    strt = datetime.strptime(start, server_dt)
+                    ends = datetime.strptime(end, server_dt)
+                    durations = ends - strt
+                    total_duration = durations.days # / 365
 
-            if total_duration > 30:
-                order.penalty_charges = 15000
-                amount = penalty
-                values = {
-                    'member_id': self.id,
-                    'member_price': amount,
-                    'pdate': self.date_order,
-                    'product_id': product,
-                    'paid_amount': amount,
-                    'penalty_fee': self.penalty_charges
-                }
-                level = 'green'
-                '''order.write({'payment_line': [(0, 0, values)], 'payment_line2': [
-                            (0, 0, values)], 'payment_status': 'gpaid'})'''
-                order.write({'payment_status': 'gpaid'})
-                            
-                name = "Green Card Payment Fee" or "{} Payment Fee".format(
-                    str(order.state).upper())
-                self.send_mail_green(name)
-                return self.button_payments(name, amount, level)
-            elif total_duration < 30:
-                order.write({'state': 'green'})
-                return self.popup_notification(popup_message)
+                if total_duration > 30:
+                    order.penalty_charges = 15000
+                    amount = penalty
+                    values = {
+                        'member_id': self.id,
+                        'member_price': amount,
+                        'pdate': self.date_order,
+                        'product_id': product,
+                        'paid_amount': amount,
+                        'penalty_fee': self.penalty_charges
+                    }
+                    level = 'green'
+                    '''order.write({'payment_line': [(0, 0, values)], 'payment_line2': [
+                                (0, 0, values)], 'payment_status': 'gpaid'})'''
+                    order.write({'payment_status': 'gpaid'})
+                                
+                    name = "Green Card Payment Fee" or "{} Payment Fee".format(
+                        str(order.state).upper())
+                    self.send_mail_green(name)
+                    return self.button_payments(name, amount, level)
+                elif total_duration < 30:
+                    order.write({'state': 'green'})
+                    return self.popup_notification(popup_message)
+        raise ValidationError('Please Add the fields: "Green Form submission date", "Green card ID"')
                 
     def popup_notification(self,popup_message):
         view = self.env.ref('sh_message.sh_message_wizard')
@@ -777,59 +795,130 @@ class App_Member(models.Model):
     def button_print_green_card(self):
         pass
 
+    def _check_fields(self):
+        errors = ['Please provide details for the following : ']
+        if not self.green_id:
+                errors.append('-Green Card ID')
+
+        if not self.package:
+            errors.append('-Compulsory Packages')
+            
+        if not self.subscription_period:
+            errors.append('-Subscription Period')
+        
+        if not self.duration_period:
+            errors.append('-Duration to Pay')
+            
+        if not self.main_house_cost:
+            errors.append('-Main House Cost Must be Greater than 1000')
+                
+        if len(errors) > 1:
+            raise ValidationError('\n'.join(errors))
+        
+    duration_period = fields.Selection([
+        ('Weeks', 'Weeks'),
+        ('Months', 'Months'),
+        ('Full Year', 'Year'),
+    ], 'Duration to Pay', Default="Months", index=True, required=False, readonly=False, copy=False, 
+                                           track_visibility='always')
+    
+    number_period = fields.Integer('Number of Years/Months', default=1)
+            
     @api.multi
-    def button_account_to_temp_payments(self):
-        return self.button_temp_payment()
-
-    def button_temp_payment(self):
-        level = 'account'
-        name = "Membership- Payment Fee" or "{} Payment".format(
-            str(self.state).upper)
+    def button_account_to_temp_payments(self):  #  state draft total
+        self._check_fields()
+        name = "Green Form Payment Fee" or "{} Payment".format(str(self.state).upper())
         amountx = 0.0
-        payment_add = 0.0
-
-        for rec in self.depend_name:
-            if rec.member_age <= 11:
-                payment_add = 0.0
-            elif rec.member_age >= 12:
-                payment_add = rec.total
-            else:
-                payment_add = 0.0
-
-        search_mem = self.env['register.spouse.member'].search(
+        spouse_payment = 0.0
+        spouse_total = 0.0
+        balance_spouse = 0.0
+        balance_member = 0.0
+        cal_amount = 0.0
+        balance_totals = 0.0
+        search_spouse = self.env['register.spouse.member'].search(
                 [('partner_id', '=', self.partner_id.id)])
-        if search_mem:
-            level = "temp"
-            for xec in search_mem:
-                if xec.mode == "jun":
-                    percent = 50 / 100
-                    discount = self.main_house_cost * percent
-                    amount = discount + self.total + payment_add \
-                         # fec.member_price + payment_add + fec.package_cost
-                    self.write(
-                            {'main_house_cost': discount, 'total': amount})
-                    self.send_mail_temp()
-                    return self.button_payments(name, amount, level)
 
-                        #  if xec.mode != "jun":
-                elif xec.mode != "jun":
-                    full = self.main_house_cost
-                    amount = self.total + payment_add \
-                         # fec.member_price + fec.package_cost
-                    self.write({'main_house_cost': full, 'total': amount})
-                    self.send_mail_temp()
-                    return self.button_payments(name, amount, level)
-                     
-        elif not search_mem:
+        if self.duration_period == "Months":
+            cal_amount = (self.member_price / 6) * self.number_period
+    
+            if self.depend_name:
+                for reco in self.depend_name:
+                    if reco.relationship != 'Child':
+                        spouse_total = reco.total
+                        spouse_payment = (reco.total / 6) * self.number_period
+                        balance_spouse = reco.total - spouse_payment
+                    else:
+                        spouse_payment = 0.0
+            balance_member = self.member_price - cal_amount
+            balance_totals = balance_spouse + balance_member
+            self.balance_total += balance_totals
+            
+        elif self.duration_period == "Full Year":
+            cal_amount = self.member_price * self.number_period
+            
+            if self.depend_name:
+                for reco in self.depend_name:
+                    if reco.relationship != 'Child':
+                        spouse_total = reco.total
+                        spouse_payment = reco.total * self.number_period
+                        balance_spouse = reco.total - spouse_payment
+                        
+                    else:
+                        spouse_payment = 0.0
+            balance_member = self.member_price - cal_amount
+            balance_totals = balance_spouse + balance_member
+            self.balance_total += balance_totals
+        
+        # if self.depend_name:
+        #     for rec in self.depend_name:
+        #         if rec.relationship != 'Child':
+        #             spouse_payment = rec.total
+        #         else: 
+        #             spouse_payment = 0.0 
+        if search_spouse:
             level = "temp"
-            full_main_house = self.main_house_cost
-            amount = payment_add + self.main_house_cost + self.package_cost + self.member_price
-            self.write({
-                            'main_house_cost': full_main_house, 
-                            'total': amount})
+            for xec in search_spouse:
+                if xec.relationship in ["Child","Brother","Sister", "Friend", "Spouse"]:
+                    percent = 50 / 100
+                    discount = main_house_cost * percent
+                    # amount = discount + self.package_cost + spouse_payment + cal_amount
+                    # self.write({'main_house_cost': discount, 'total': amount})
+                    amount = (spouse_total + discount + self.package_cost + self.member_price) - balance_totals
+            
+                    self.send_mail_temp()
+                    self.button_payments(name, amount, level)
+        else:
+            # amount = spouse_total + self.main_house_cost + self.package_cost + # cal_amount # self.member_price
+            # amount = totalofspouse(30000) + mainhouse(50000) + package(10000)+totalsection(10000)
+            # cal = 30000 + 50000 + 10000 + 10000 = 100000
+            amount = (spouse_total + self.main_house_cost + self.package_cost + self.member_price) - balance_totals
+            level = 'temp'
             self.send_mail_temp()
             return self.button_payments(name, amount, level)
 
+    def button_payments(self, name, amount, level):  #  Send memo back
+        return {
+            'name': name,
+            'view_type': 'form',
+            "view_mode": 'form',
+            'res_model': 'register.payment.member',
+            'type': 'ir.actions.act_window',
+            'target': 'new',
+            'context': {
+                'default_payment_type': "outbound",
+                'default_date': fields.Datetime.now(),
+                'default_amount': amount, #  self.int_form_price,
+                'default_member_id': self.id,
+                'default_partner_id': self.partner_id.id,
+                'default_member_ref': self.id,
+                'default_name': "Member Payments",
+                'default_spouse_amount':self.spouse_amount,
+                'default_level': level,
+                'default_to_pay': amount,
+                'default_num':self.id,
+            },
+        }      
+        
     @api.multi
     def send_mail_temp(self, force=False):
         email_from = self.env.user.company_id.email
@@ -842,10 +931,10 @@ class App_Member(models.Model):
          </br> Thanks".format(fields.Datetime.now())
         self.mail_sending(email_from, group_user_id, extra, bodyx)
 
-    @api.multi
+    @api.one
     def button_make_induction(self):
         for rec in self:
-            if rec.state == "temp" and rec.temp_id != False:
+            if self.temp_id:
                 start = rec.date_of_temp
                 end = fields.Datetime.now()
                 if start and end:
@@ -862,6 +951,9 @@ class App_Member(models.Model):
                             "You are trying to Set this member for induction,\
                              it's not up to 3months validity")
                         #  rec.write({'state':"induction"})
+            else:
+                raise ValidationError(
+                            "Please Enter Temporarily ID")
 
     @api.multi
     def button_make_induction2(self):
@@ -885,6 +977,21 @@ class App_Member(models.Model):
                         mem_search.write({'state': "temp"})
                         #  rec.write({'state':"induction"})
                         #  self.send_mail_induction()
+    def send_mail_allinduction(self, force=False):
+        email_from = self.env.user.company_id.email
+        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
+        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
+        extra = self.email
+        bodyx = "Dear Sir/Madam, </br>We wish to notify that you have been enlisted for induction on the date: {} </br>\
+             Thanks".format(fields.Datetime.now())
+        self.mail_sending(email_from, group_user_id, extra, bodyx)
+
+    @api.multi
+    def action_send_induction(self):    
+        members = self.env['member.app'].search([('state','=', 'temp')])
+        for vals in members:
+            emails = vals.send_mail_allinduction()
+        return True
 
     @api.multi
     def send_mail_induction(self, force=False):
@@ -898,18 +1005,21 @@ class App_Member(models.Model):
 
     @api.multi
     def make_ordinary_or_junior(self):
-        body = "Ordinary Member Promoted on %s" % (
-            datetime.strftime(datetime.today(), '%d-%m-%y'))
-        records = self._get_followers()
-        followers = records
-        self.message_post(
-            body=body,
-            subtype='mt_comment',
-            message_type='notification',
-            partner_ids=followers)
+        if self.identification:
+            body = "Ordinary Member Promoted on %s" % (
+                datetime.strftime(datetime.today(), '%d-%m-%y'))
+            records = self._get_followers()
+            followers = records
+            self.message_post(
+                body=body,
+                subtype='mt_comment',
+                message_type='notification',
+                partner_ids=followers)
 
-        self.send_mail_manager()
-        self.write({'state': 'manager'})
+            self.send_mail_manager()
+            self.write({'state': 'manager'})
+        else:
+            raise ValidationError('Please Enter Member ID Field:')
 
     def send_mail_manager(self, force=False):
         email_from = self.env.user.company_id.email
@@ -1092,7 +1202,7 @@ class App_Member(models.Model):
 
         values = {
             'member_id': self.id,
-            'member_price': self.member_price,
+            'member_price': self.harmony + self.int_form_price,
             'pdate': self.date_order,
             'product_id': product or self.product_id.id,
             'paid_amount': self.total,
@@ -1443,6 +1553,7 @@ class App_Member_Line_major(models.Model):
         digits=dp.get_precision('Product Price'),
         required=True)
     paid_amount = fields.Float(string='Amount Paid', required=True)
+    spouse_amount =fields.Float(string='Spouse Amount')
     balance = fields.Float(string='Balance', default=0.0)
     pdate = fields.Date('Paid Date', default=fields.Date.today())
     penalty_fee = fields.Float(string='Penalty Fee', default=0.0)
@@ -1479,15 +1590,30 @@ class App_subscription_Line(models.Model):
         default=fields.Date.today(),
         required=True)
     subscription_period = fields.Selection([
-        ('eight', '2018'),
-        ('nine', '2019'),
-        ('twen', '2020'),
-        ('twen_one', '2021'),
-        ('twen_two', '2022'),
-        ('twen_three', '2023'),
-        ('twen_four', '2023'),
-        ('twen_five', '2025'),
-    ], 'Period', index=True, required=True, readonly=False, copy=False, track_visibility='always')
+        ('Jan-June 2011', 'Jan-June 2011'),
+        ('July-Dec 2011', 'July-Dec 2011'),
+        ('Jan-June 2012', 'Jan-June 2012'),
+        ('July-Dec 2012', 'July-Dec 2012'),
+        ('Jan-June 2013', 'Jan-June 2013'),
+        ('July-Dec 2013', 'July-Dec 2013'),
+        ('Jan-June 2014', 'Jan-June 2014'),
+        ('July-Dec 2014', 'July-Dec 2014'),
+        ('Jan-June 2015', 'Jan-June 2015'),
+        ('July-Dec 2015', 'July-Dec 2015'),
+        ('Jan-June 2016', 'Jan-June 2016'),
+        ('July-Dec 2016', 'July-Dec 2016'),
+        ('Jan-June 2017', 'Jan-June 2017'),
+        ('July-Dec 2017', 'July-Dec 2017'),
+        ('Jan-June 2018', 'Jan-June 2018'),
+        ('July-Dec 2018', 'July-Dec 2018'),
+        ('Jan-June 2019', 'Jan-June 2019'),
+        ('July-Dec 2019', 'July-Dec 2019'),
+        ('Jan-June 2020', 'Jan-June 2020'),
+        ('July-Dec 2020', 'July-Dec 2020'),
+        ('Jan-June 2021', 'Jan-June 2021'),
+        ('July-Dec 2021', 'July-Dec 2021'),
+    ], 'Period', index=True, required=True, readonly=False, copy=False, 
+                                           track_visibility='always')
 
 #  $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1502,14 +1628,28 @@ class Package_model(models.Model):
         default=fields.Date.today(),
         required=True)
     subscription_period = fields.Selection([
-        ('eight', '2018'),
-        ('nine', '2019'),
-        ('twen', '2020'),
-        ('twen_one', '2021'),
-        ('twen_two', '2022'),
-        ('twen_three', '2023'),
-        ('twen_four', '2023'),
-        ('twen_five', '2025'),
+        ('Jan-June 2011', 'Jan-June 2011'),
+        ('July-Dec 2011', 'July-Dec 2011'),
+        ('Jan-June 2012', 'Jan-June 2012'),
+        ('July-Dec 2012', 'July-Dec 2012'),
+        ('Jan-June 2013', 'Jan-June 2013'),
+        ('July-Dec 2013', 'July-Dec 2013'),
+        ('Jan-June 2014', 'Jan-June 2014'),
+        ('July-Dec 2014', 'July-Dec 2014'),
+        ('Jan-June 2015', 'Jan-June 2015'),
+        ('July-Dec 2015', 'July-Dec 2015'),
+        ('Jan-June 2016', 'Jan-June 2016'),
+        ('July-Dec 2016', 'July-Dec 2016'),
+        ('Jan-June 2017', 'Jan-June 2017'),
+        ('July-Dec 2017', 'July-Dec 2017'),
+        ('Jan-June 2018', 'Jan-June 2018'),
+        ('July-Dec 2018', 'July-Dec 2018'),
+        ('Jan-June 2019', 'Jan-June 2019'),
+        ('July-Dec 2019', 'July-Dec 2019'),
+        ('Jan-June 2020', 'Jan-June 2020'),
+        ('July-Dec 2020', 'July-Dec 2020'),
+        ('Jan-June 2021', 'Jan-June 2021'),
+        ('July-Dec 2021', 'July-Dec 2021'),
     ], 'Period', index=True, required=True, readonly=False, copy=False, 
                                            track_visibility='always')
 
@@ -1950,6 +2090,7 @@ class RegisterPaymentMember(models.Model):
         related='payment_method.default_debit_account_id')
     date = fields.Date('Paid Date', required=True)
     amount = fields.Float('Paid Amount', required=True, readonly=False)
+    spouse_amount = fields.Float('Spouse Amount')
     print_memo = fields.Boolean('Print Memo', default=True)
     state = fields.Selection([('draft', 'Draft'),
 
@@ -1959,13 +2100,13 @@ class RegisterPaymentMember(models.Model):
     p_type = fields.Selection([('sub', 'Subscription'),
                                ('ano', 'Anomaly'),
                                ('normal', 'Normal'),
-                               ], default='normal', string='Payment type')
+                               ], default='normal', string='Type')
     
     mode_payment = fields.Selection([('Transfer', 'Transfer'),
                                ('POS', 'POS'),
                                ('CHEQUE', 'CHEQUE'),
                                ('BANK DRAFT', 'BANK DRAFT'),
-                               ], default='normal', string='Payment type')
+                               ], default='Transfer', string='Payment Mode')
     num = fields.Float('Number')
     
     @api.one
@@ -2016,13 +2157,14 @@ class RegisterPaymentMember(models.Model):
                     lists = []
                     list1 = []
                     balance = rey.to_pay - rey.amount
+                    fec.balance_total += balance
                     values = (0, 0,
                               {'member_idx': fec.id,
                                'product_id': product,
                                'paid_amount': rey.amount,
                                'balance': balance,
                                'pdate': rey.date,
-                               'member_price': fec.total,
+                               'member_price': fec.int_form_price + fec.harmony,
                                'name': "White Form Payment"})
                     
                     lists.append(values)
@@ -2036,15 +2178,16 @@ class RegisterPaymentMember(models.Model):
                     lists = []
                     list1 = []
                     balance = rey.to_pay - rey.amount
+                    # fec.balance_total += balance
                     values = (0,
                               0,
                               {'member_idx': fec.id,
                                'product_id': product,
                                'paid_amount': rey.amount,
-                               'balance': balance,
+                               # 'balance': balance,
                                'pdate': rey.date,
-                               'member_price': fec.total,
-                               'name': "Main Membership Payment"})
+                               'member_price': rey.amount,# fec.green_form_price + fec.coffee_book,
+                               'name': "Green Form Delay Payment"})
                     
                     lists.append(values)
                     list1.append(values)
@@ -2057,6 +2200,9 @@ class RegisterPaymentMember(models.Model):
                     lists = []
                     list1 = []
                     balance = rey.to_pay - rey.amount
+                    fec.balance_total += balance
+                    total_green = fec.green_form_price + fec.coffee_book
+                    
                     values = (0, 0,
                               {'member_idx': fec.id,
                                'product_id': product,
@@ -2064,7 +2210,7 @@ class RegisterPaymentMember(models.Model):
                                'balance': balance,
                                'pdate': rey.date,
                                'name':"Green Card Payment",
-                               'member_price': fec.total})
+                               'member_price': total_green})
                     lists.append(values)
                     list1.append(values)
                     fec.payment_line2 = lists
@@ -2077,10 +2223,12 @@ class RegisterPaymentMember(models.Model):
                     lists = []
                     list1 = []
                     balance = fec.total - rey.amount
+                    # fec.balance_total += balance
                     values = (0, 0,
                               {'member_idx': fec.id,
                                'product_id': product,
                                'paid_amount': rey.amount,
+                               'spouse_amount': fec.spouse_amount,
                                'name':"Membership Form Payment",
                                'balance': balance,
                                'pdate': self.date,
@@ -2098,6 +2246,7 @@ class RegisterPaymentMember(models.Model):
                         list1 = []
                         list3 = []
                         balance = rey.to_pay - rey.amount
+                        fec.balance_total += balance
                         if sub_id:
                             for tey in sub_id:
                                 tey.state = "done"
@@ -2124,6 +2273,7 @@ class RegisterPaymentMember(models.Model):
                         # percent = 12.5/100
                         # fine = percent
                         balance = rey.to_pay - rey.amount
+                        fec.balance_total += balance
                         if sub_id:
                             for gec in fec.sub_line:
                                 if gec.sub_order.id == sub_id.id:
@@ -2215,7 +2365,7 @@ class RegisterPaymentMember(models.Model):
                 append_mails_to3.append(group_mail3.login)
 
             all_mails = append_mails + append_mails_to + append_mails_to3
-            print all_mails
+            print (all_mails)
             email_froms = str(from_browse) + " <" + str(email_from) + ">"
             mail_sender = (', '.join(str(item)for item in all_mails))
 

@@ -117,8 +117,6 @@ class Suspend_Member(models.Model):
         else:
             raise ValidationError('No member record found')
         
-    
-    
 # #  FUNCTIONS # # # # #     
     @api.multi
     def send_mail_suspend(self, force=False):
