@@ -36,5 +36,8 @@ access_spouse_exclusion_ikoyi_id,access_spouse_exclusionname,model_spouse_exclus
 access_allreport_ikoyi_id,access_allreportname,report.model_ir_actions_report_xml,,1,1,1,1
 access_reinstatement_ikoyi_id,access_reinstatement_name,model_reinstatement_model,,1,1,1,1
 access_subscription_id,access_subscription_name,model_subscription_line,,1,1,1,1
+access_levies_model_id,access_levies_model_name,model_levies_model,,1,1,1,1
+
+access_spouse_sub_id,access_spouse_sub_name,model_spouse_subscription_payment,,1,1,1,1
 
 

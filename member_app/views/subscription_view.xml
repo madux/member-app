@@ -32,7 +32,7 @@
                                     attrs="{'invisible': ['|',('p_type', 'not in', ['ano']),('state','not in',['suscription','fined'])]}" groups="base.group_system,member_app.membership_officer_ikoyi,member_app.manager_member_ikoyi"/>
 
                                     <button name="generate_receipt" string='Register Invoice Payments' type="object" icon="fa-registered" class="btn-primary"
-                                    attrs="{'invisible': [('state','not in',['done','fined','suscription'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" />
+                                    attrs="{'invisible': [('state','not in',['done','fined','partial','suscription'])]}" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi" />
                                     
                                      
                                     <button name="check_expiry" string='Check Expiry' type="object" icon="fa-registered" class="btn-primary"
@@ -66,6 +66,9 @@
                                     attrs="{'required': [('duration_period','in',['Months','Full Year'])],'invisible': [('duration_period','not in',['Months','Full Year'])]}"/>
                                  <field name="date_end" readonly="1"/>     
                                 <field name="total"/>
+
+                                 <field name="total_paid"/>
+                                 <field name="balance_total"/>
                                 <!--<field name="url_audio" widget="audio_field" options="{'show_on_edit_mode':True}"
                                 />-->
                                     
@@ -82,7 +85,11 @@
                                     <field name="name"/>
                                     <field name="member_price" string = "subscription Amount"/>                               
                                     <field name="subscription_period" string="Subscription Period"/>
-                                    <field name="pdate" string="Date"/>
+                                   
+                                    <field name="mainhouse_price"/>
+                                    <field name="entry_price"/>
+                                    <field name="sub_levy"/>
+                                    <field name="special_levy"/>
                                      
                                 </tree>
                                 </field>

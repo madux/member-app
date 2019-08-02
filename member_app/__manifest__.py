@@ -9,12 +9,13 @@
     'summary':'A membership module for Ikoyi club',
     'category': 'Base',
     # 'live_test_url': "https://www.youtube.com/watch?v=4v5P1UdhdxU",
-
-    'depends': ['base', 'sh_message','hr','sale','ikoyi_module','account','product','branch'],
+    'depends': ['base', 'mail', 'sh_message','hr','ikoyi_module','account','product','branch','sale'],
     'data': [
         'security/security_group.xml',
         'security/ir.model.access.csv',
+        'sequence/sequence.xml',
         'views/member_app_view.xml',
+        'views/levies_view.xml',
         'views/suspension_view.xml',
         'views/subscription_view.xml',
         'views/guest_view.xml', 

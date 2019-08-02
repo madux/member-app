@@ -48,9 +48,9 @@ class Subscription_Member(models.Model):
              'suspension')],
         readonly=False,
         compute="Domain_Member_Field")
-    identification = fields.Char('Identification.', size=6)
-    email = fields.Char('Email', store=True)
-    account_id = fields.Many2one('account.account', 'Account')
+    identification = fields.Char('Identification.', size=6, compute="Domain_Member_Field")
+    email = fields.Char('Email', compute="Domain_Member_Field")
+    account_id = fields.Many2one('account.account', 'Account', compute="Domain_Member_Field")
     date = fields.Datetime('Date', required=True)
     # suspension_date = fields.Datetime('Suspension Date')
 
@@ -82,13 +82,13 @@ class Subscription_Member(models.Model):
 
                                ], default='normal', string='Type')
     invoice_id = fields.Many2one('account.invoice', string='Invoice', store=True)
-
-    # @api.onchange('partner_id')
-    # def onchange_partner_invoice(self):
-    #     res = {}
-    #     if self.partner_id:
-    #         res['domain'] = {'invoice_id': [('partner_id', 'in', [item.id for item in self.partner_id])]}
-    #     return res
+    total_paid = fields.Float('Total Paid', default =0)
+    balance_total = fields.Float('Outstanding', default =0, compute="get_balance_total")
+    
+    @api.depends('total_paid')
+    def get_balance_total(self):
+        self.balance_total = self.total - self.total_paid
+    
     @api.onchange('partner_id')
     def onchange_partner_invoice(self):
         res = {}
@@ -120,16 +120,16 @@ class Subscription_Member(models.Model):
         ('July-Dec 2020', 'July-Dec 2020'),
         ('Jan-June 2021', 'Jan-June 2021'),
         ('July-Dec 2021', 'July-Dec 2021'),
-    ], 'Period', index=True, required=False, readonly=False, copy=False, 
+    ], 'Period', index=True, required=True, readonly=False, copy=False, 
                                            track_visibility='always')
 
     duration_period = fields.Selection([
         ('Months', 'Months'),
         ('Full Year', 'Full Year'),
-    ], 'Duration to Pay', Default="Months", index=True, required=False, readonly=False, copy=False, 
+    ], 'Duration to Pay', default="Months", index=True, required=False, readonly=False, copy=False, 
                                            track_visibility='always')
 
-    number_period = fields.Integer('No. of Years/Months', default=1)
+    number_period = fields.Integer('No. of Years/Months', default=6)
     date_end = fields.Datetime(
         string='End Date',
         default=fields.Datetime.now,
@@ -165,6 +165,7 @@ class Subscription_Member(models.Model):
         for r2 in appends2:
             self.subscription = [(4, r2.id)]  #  [(6,0,r2.id)] [(4,r)] o(n2)
 
+    @api.one
     @api.depends('partner_id')
     def Domain_Member_Field(self):
         for record in self:
@@ -443,18 +444,20 @@ class Subscription_Member(models.Model):
                     name = self.env['product.product'].create({'name': line.name, 
                                                                'type': 'service',
                                                                'membershipx': True,
-                                                               'list_price': line.member_price})
+                                                               'list_price': line.member_price,
+                                                               'taxes_id': []})
                     product = name.id
                 prods = products.search(
                     [('id', '=', product)])
                 line_values = {
                     'product_id': prods.id, # partner.product_id.id,
-                    'price_unit': line.member_price,# prods.list_price,
+                    'price_unit': prods.list_price,
                     'quantity': qty, # name.product_qty,
-                    'price_subtotal': line.member_price * qty,
+                    'price_subtotal': prods.list_price * qty,
                     'invoice_id': invoice.id,
                     'invoice_line_tax_ids': [],
                     'account_id': self.member_id.partner_id.property_account_payable_id.id,
+                    'name': "Subscription Payments"
                     }
                 # create a record in cache, apply onchange then revert back to a dictionary 
                 invoice_line = self.env['account.invoice.line'].new(line_values)
@@ -523,19 +526,28 @@ class subscription_LineMain(models.Model):
         'Subscription Date',
         default=fields.Date.today(),
         required=True)
-    periods_month = fields.Selection([('1st Half', 'January-June 2015'),
-                                      ('2nd Half', 'July-Dec 2015'),
-                                      ('Full Year', 'January-June 2016'),
-                                      ('jd2016', 'July-Dec 2016'),
-                                      ('jj2017', 'January-June 2017'),
-                                      ('jd2017', 'July-Dec 2017'),
-                                      ('jj2018', 'January-June 2018'),
-                                      ('jd2018', 'July-Dec 2018'),
-                                      ('jj2019', 'January-June 2019'),
-                                      ('jd2019', 'July-Dec 2019'),
-                                      ('jj2020', 'January-June 2020'),
-                                      ('jd2020', 'July-Dec 2020'),
-                                      ('jj2021', 'January-June 2021'),
-                                      ('jd2021', 'July-Dec 2021'),
-
-                                      ], string='Periods', required=True)
+    periods_month = fields.Selection([
+        ('Jan-June 2011', 'Jan-June 2011'),
+        ('July-Dec 2011', 'July-Dec 2011'),
+        ('Jan-June 2012', 'Jan-June 2012'),
+        ('July-Dec 2012', 'July-Dec 2012'),
+        ('Jan-June 2013', 'Jan-June 2013'),
+        ('July-Dec 2013', 'July-Dec 2013'),
+        ('Jan-June 2014', 'Jan-June 2014'),
+        ('July-Dec 2014', 'July-Dec 2014'),
+        ('Jan-June 2015', 'Jan-June 2015'),
+        ('July-Dec 2015', 'July-Dec 2015'),
+        ('Jan-June 2016', 'Jan-June 2016'),
+        ('July-Dec 2016', 'July-Dec 2016'),
+        ('Jan-June 2017', 'Jan-June 2017'),
+        ('July-Dec 2017', 'July-Dec 2017'),
+        ('Jan-June 2018', 'Jan-June 2018'),
+        ('July-Dec 2018', 'July-Dec 2018'),
+        ('Jan-June 2019', 'Jan-June 2019'),
+        ('July-Dec 2019', 'July-Dec 2019'),
+        ('Jan-June 2020', 'Jan-June 2020'),
+        ('July-Dec 2020', 'July-Dec 2020'),
+        ('Jan-June 2021', 'Jan-June 2021'),
+        ('July-Dec 2021', 'July-Dec 2021'),
+    ], 'Period', index=True, required=False, readonly=False, copy=False, 
+                                           track_visibility='always')
