@@ -25,37 +25,26 @@ class Account_payment(models.Model):
     _inherit = "account.payment"
     _order = "id desc"
 
-    member_id = fields.Many2one('member.app', string="Payment Ref")
+    member_id = fields.Many2one('member.app', string="Payment Ref.")
     filex = fields.Binary("Evidence of Payment")
     file_namex = fields.Char("FileName")
+    bank = fields.Many2one(
+        'res.bank',
+        string='Bank',
+        readonly=False)
 
 
 class App_Member(models.Model):
     _name = "member.app"
     _inherit = ['mail.thread', 'ir.needaction_mixin']
+    _rec_name = "surname"
 
     _sql_constraints = [
         ('name_unique',
          'UNIQUE(identification, partner_id, temp_id)',
          'Partner or Identification Numbers must be unique')
     ]
-
-    @api.model
-    def create(self, vals):
-        res = super(App_Member, self).create(vals)
-        partner_id = vals.get('partner_id')
-        partner = self.env['res.partner'].search([('id', '=', partner_id)])
-        partner.write({'street': vals.get('street'),
-                       'street2': vals.get('street'),
-                       'email': vals.get('email'),
-                       'state_id': vals.get('state_id'),
-                       'title': vals.get('title'),
-                       'image': vals.get('image'),
-                       'phone': vals.get('phone'),
-                       'function': vals.get('occupation')})
-        #  partner.write({'is_member':True})
-        return res
-
+   
     @api.constrains('depend_name')
     def _check_dependant(self):
         if self.state in ['white', 'draft', 'issue_green', 'green', 'wait', 'interview']:
@@ -73,7 +62,7 @@ class App_Member(models.Model):
     @api.multi
     def unlink(self):
         for holiday in self.filtered(
-            lambda holiday: holiday.state not in [
+            lambda holiday: holiday.state in [
                 'green',
                 'manager',
                 'manager_two',
@@ -93,6 +82,13 @@ class App_Member(models.Model):
             pro_id = empl_obj.id
             return pro_id
 
+    @api.onchange('first_name', 'middle_name')
+    def _onchange_name(self):
+         
+        if self.first_name:
+            self.first_name = self.first_name.strip()
+        if self.middle_name:
+            self.middle_name = self.middle_name.strip()
     #  GETS THE COUNTRY FROM STATE_ID
     @api.multi
     def name_get(self):
@@ -146,8 +142,13 @@ class App_Member(models.Model):
         "Use this field anywhere a small image is required.")
 
     partner_id = fields.Many2one(
-        'res.partner', 'Name', domain=[
+        'res.partner', 'Surname Name', domain=[
             ('is_member', '=', True)])
+
+    surname = fields.Char(string='Surname', required=True)
+    first_name = fields.Char(string='First Name', required=True)
+    middle_name = fields.Char(string="Middle Name")
+
     account_id = fields.Many2one('account.account', 'Account')
     city = fields.Char('City')
     street = fields.Char('Street')
@@ -426,8 +427,7 @@ class App_Member(models.Model):
                 rec.write({'section_int': 6})
             elif rec.section_duration == "Full Year":
                 rec.write({'section_int': 1})
-  
-    @api.one
+
     @api.onchange('subscription_period')
     def get_all_packages(self):
         for rex in self:
@@ -445,7 +445,7 @@ class App_Member(models.Model):
         if self.subscription_period:
             res['domain'] = {'subscription':[('subscription_period','=', self.subscription_period)]}
         return res
-    
+    @api.one
     @api.depends('payment_line2')
     def get_balance_total(self):
         total = 0.0
@@ -537,8 +537,7 @@ class App_Member(models.Model):
             self.main_house_cost = mainhouse_cost
         else:
             pass
-            #raise ValidationError('Please go to the Mainhouse configuration and set Main House Price for the Selected Period ')
-        
+            
         if search_spouse:
             level = "temp"
             for xec in search_spouse:
@@ -725,6 +724,19 @@ class App_Member(models.Model):
     @api.multi
     def button_white_payments(self):  #  state draft
         self.state = 'white'
+        partner = self.env['res.partner']#.search([('id', '=', self.partner_id.id)])
+        part = partner.create({'street': self.street,
+                        'email': self.email,
+                        'state_id': self.state_id.id,
+                        'title':self.title.id,
+                        'city':self.city,
+                        'image': self.image,
+                        'phone':self.phone,
+                        'function': self.occupation,
+                        'name': str(self.surname) +' '+ str(self.first_name) +' '+ str(self.middle_name),
+                        'is_member': True,
+                        })
+        self.partner_id = part.id
         return self.sendmail_white_confirm()
 
     @api.multi
@@ -759,6 +771,7 @@ class App_Member(models.Model):
                 raise ValidationError('There is no penalty fee for this member')
         else:
             raise ValidationError('Please Enter the following fields: "White form submission",  "Date of Interview"')
+
 
     def sendmail_white_confirm(self, force=False):
         email_from = self.env.user.company_id.email
@@ -845,14 +858,13 @@ class App_Member(models.Model):
                 #  product.append(product_search.id)
                 product = product_search[0].id
             else:
-                pro = products.create({'name': state_now, 'membershipx': True})
+                pro = products.create({'name': "White Form", 'membershipx': True})
                 product = pro.id
             #  order.penalty_charges = 15000
             
             amount = order.green_form_price + order.coffee_book  
             level = 'interview'
-            name = "Interview Card Payment Fee" or "{} Payment Fee".format(
-                    str(order.state).upper())
+            name = "Payment"
             
             order.write(
                 {
@@ -861,8 +873,7 @@ class App_Member(models.Model):
             self.send_mail_green(name)
             
             return self.button_payments(name, amount, level)
-    
-     
+
     
     @api.multi
     def set_interview(self):
@@ -885,7 +896,7 @@ class App_Member(models.Model):
         """
         popup_message = "Hurray!!!... There is no penalty charge for the member"
         penalty = 15000
-        if self.date_green_pickup or self.green_id:
+        if self.date_issue_green:
             for order in self:
                 product = 0
                 state_now = str(order.state).replace('_', ' ').capitalize()
@@ -910,27 +921,16 @@ class App_Member(models.Model):
                 if total_duration > 30:
                     order.penalty_charges += 15000
                     amount = penalty
-                    # values = {
-                    #     'member_id': self.id,
-                    #     'member_price': amount,
-                    #     'pdate': self.date_order,
-                    #     'product_id': product,
-                    #     'paid_amount': amount,
-                    #     'penalty_fee': self.penalty_charges
-                    # }
-                    # level = 'green'
-                    # '''order.write({'payment_line': [(0, 0, values)], 'payment_line2': [
-                    #             (0, 0, values)], 'payment_status': 'gpaid'})'''
+                    level = 'green'
                     order.write({'payment_status': 'gpaid'})
                                 
-                    name = "Green Card Delay Payment Fee" or "{} Payment Fee".format(
-                        str(order.state).upper())
+                    name = "Green Card Revalidation Fee"
                     self.send_mail_green(name)
                     return self.button_payments(name, amount, level)
                 elif total_duration < 30:
                     order.write({'state': 'green'})
                     return self.popup_notification(popup_message)
-        raise ValidationError('Please Add the fields: "Green Form submission date", "Green card ID"')
+        raise ValidationError('Please Add the fields: "Green Form submission date"')
                 
     def popup_notification(self,popup_message):
         view = self.env.ref('sh_message.sh_message_wizard')
@@ -985,7 +985,8 @@ class App_Member(models.Model):
     @api.multi
     def button_account_to_temp_payments(self):  # 
         self._check_fields()
-        name = "Green Form Payment Fee" or "{} Payment".format(str(self.state).upper())
+        # name = "Green Form Payment Fee" or "{} Payment".format(str(self.state).upper())
+        name = "Subscription Payment Fee"
         amount = self.total
         level = "temp"
         return self.button_payments(name, amount, level)
@@ -1166,53 +1167,34 @@ class App_Member(models.Model):
 
     @api.multi
     def make_ordinary_or_junior(self):
-        member = self.env['member.app']
-        name_list = []
         partner = self.partner_id.name[:1]
-         
         partner_name = str(partner).upper()
         sequence = self.env['ir.sequence'].next_by_code('member.app')
         seq = str(sequence)
         
         
-        member = self.env['member.app'].search([('partner_id.name','=ilike', str(partner)+'%')])# ([('state', 'not in',['draft','white','wait', 'interview', 'issue_green', 'account','green'])])
+        member = self.env['member.app'].search([('partner_id.name','=ilike', partner_name+'%')])# ([('state', 'not in',['draft','white','wait', 'interview', 'issue_green', 'account','green'])])
         #self.identification = member[-2].identification[2:]
+        # names = partner_name[::-1].zfill(6)[::-1]
+        names = partner_name + "1"
         if member:
             if len(member) > 1:
                 identification = member[-2]
-                iden = identification.identification[2:] or 0000
-                iden_num = int(iden) + 1
-                self.identification = partner_name + str(iden_num)
+                ident = identification.identification
+                if ident:
+                    if len(ident) > 1:     
+                        iden = str(ident)[1:] 
+                        iden_num = int(iden) + 1
+                        self.identification = partner_name + str(iden_num)
+                    else:
+                        self.identification = names
+                else:
+                    self.identification = names
             else:
-                # sequence = self.env['ir.sequence'].get('member.app')
-                
-                # self.identication = partner_name[::1].zfill(0)[::1] + str(sequence)
-                
-                if len(seq) > 1:
-                    self.identication = partner_name[::1].zfill(4)[::1] +  seq
-                elif len(seq) > 2:
-                    self.identication = partner_name[::1].zfill(3)[::1] +  seq
-                elif len(seq) > 3:
-                    self.identication = partner_name[::1].zfill(2)[::1] +  seq
-                    
-                elif len(seq) > 4:
-                    self.identication = partner_name[::1].zfill(1)[::1] +  seq
-                elif len(seq) > 5:
-                    self.identication = partner_name[::1].zfill(0)[::1] +  seq
+                self.identification = names
         else:
-            seq = str(sequence)
-            if len(seq) > 1:
-                self.identication = partner_name[::1].zfill(4)[::1] +  seq
-            elif len(seq) > 2:
-                self.identication = partner_name[::1].zfill(3)[::1] +  seq
-            elif len(seq) > 3:
-                self.identication = partner_name[::1].zfill(2)[::1] +  seq
-                    
-            elif len(seq) > 4:
-                self.identication = partner_name[::1].zfill(1)[::1] +  seq
-            elif len(seq) > 5:
-                self.identication = partner_name[::1].zfill(0)[::1] +  seq
-        
+            self.identification = names
+         
        
         body = "Ordinary Member Promoted on %s" % (
                 datetime.strftime(datetime.today(), '%d-%m-%y'))
@@ -1816,7 +1798,7 @@ class App_subscription_Line(models.Model):
         default=fields.Date.today(),
         required=False)
     
-    mainhouse_price = fields.Float('Main House Price', required=True, default=0.0)
+    mainhouse_price = fields.Float('Main House Price', required=False, default=0.0)
     entry_price = fields.Float('Entry Fee', required=True, default=0.0)
     special_levy = fields.Float('Special Levy', required=True, default=0.0)
     sub_levy = fields.Float('Subscription Levy', required=True, default=0.0)
@@ -1856,18 +1838,6 @@ class Spouse_subscription_Line(models.Model):
     def create(self, vals):
         res = super(Spouse_subscription_Line, self).create(vals)
 
-        # product_search = self.env['product.product'].search([('name', '=', vals['name'])])
-        # if product_search:
-        #     product_search.write({'list_price': vals['member_price']})
-        # else:
-        #     product_id = self.env['product.product'].create({'name': vals['name'],
-        #                                         'type': 'service',
-        #                                         'membershipx': True,
-        #                                         'list_price': vals['member_price'],
-        #                                         'taxes_id': []})
-        #     vals['product_id'] = product_id
-        # return res
-     
     spouse_id = fields.Many2one('register.spouse.member', 'Spouse id ID')
     name = fields.Char('Activity', required=False)
     subscription = fields.Many2one(
@@ -1877,11 +1847,11 @@ class Spouse_subscription_Line(models.Model):
     member_price = fields.Float(
         string= "Subscription Fee",
         digits=dp.get_precision('Product Price'),
-        required=True)
+        required=True, compute="get_subscription")
     # mainhouse_price = fields.Float('Main House Price', required=True, default=0.0)
-    entry_price = fields.Float('Entry Fee', required=True, default=0.0)
-    special_levy = fields.Float('Special Levy', required=True, default=0.0)
-    sub_levy = fields.Float('Subscription Levy', required=True, default=0.0)
+    entry_price = fields.Float('Entry Fee', required=True, compute="get_subscription", default=0.0)
+    special_levy = fields.Float('Special Levy', compute="get_subscription", required=True, default=0.0)
+    sub_levy = fields.Float('Subscription Levy', compute="get_subscription", required=True, default=0.0)
     total_fee = fields.Float('Total', compute="get_line_total", default=0.0)
     
     @api.one
@@ -1889,23 +1859,30 @@ class Spouse_subscription_Line(models.Model):
     def get_line_total(self):
         total = self.entry_price + self.special_levy + self.member_price + self.sub_levy
         self.total_fee = total
-        
+
+    @api.one
+    @api.depends('subscription')
+    def get_subscription(self):
+        self.entry_price = self.subscription.entry_price
+        self.special_levy = self.subscription.special_levy
+        self.member_price = self.subscription.member_price
+        self.sub_levy = self.subscription.sub_levy
 
 class Package_model(models.Model):
     _name = "package.model"
     
     @api.model
     def create(self, vals):
-        res = super(App_subscription_Line, self).create(vals)
+        res = super(Package_model, self).create(vals)
 
         product_search = self.env['product.product'].search([('name', '=', vals['name'])])
         if product_search:
-            product_search.write({'list_price': vals['member_price']})
+            product_search.write({'list_price': vals['package_cost']})
         else:
             product_id =self.env['product.product'].create({'name': vals['name'],
                                                 'type': 'service',
                                                 'membershipx': True,
-                                                'list_price': vals['member_price'],
+                                                'list_price': vals['package_cost'],
                                                 'taxes_id': []})
             vals['product_id'] = product_id
         return res
@@ -1991,7 +1968,7 @@ class ProductMA(models.Model):
 class RegisterSpouseMember(models.Model):
     _name = 'register.spouse.member'
     _description = 'Register Member Dependant'
-
+    _rec_name = "surname"
     @api.multi
     def name_get(self):
         if not self.ids:
@@ -2050,6 +2027,11 @@ class RegisterSpouseMember(models.Model):
     partner_id = fields.Many2one(
         'res.partner', 'Name', domain=[
             ('is_member', '=', True)])
+    
+    surname = fields.Char(string='Surname', required=True)
+    first_name = fields.Char(string='First Name', required=True)
+    middle_name = fields.Char(string="Middle Name")
+    
     city = fields.Char('City')
     street = fields.Char('Street')
     url = fields.Char('Website')
@@ -2078,6 +2060,7 @@ class RegisterSpouseMember(models.Model):
         readonly=False)
     total = fields.Integer('Total Section Amount', compute='get_totals')
     date_order = fields.Datetime('Offer Date', default=fields.Datetime.now())
+    
     member_age = fields.Integer(
         'Age',
         required=True,
@@ -2194,18 +2177,41 @@ class RegisterSpouseMember(models.Model):
 
     @api.multi
     def button_make_wait(self):
+        partner = self.env['res.partner']#.search([('id', '=', self.partner_id.id)])
+        part = partner.create({'street': self.street,
+                        'email': self.email,
+                        'state_id': self.state_id.id,
+                        'title':self.title.id,
+                        'city':self.city,
+                        'image': self.image,
+                        'phone':self.phone,
+                        'function': self.occupation,
+                        'name': str(self.surname) +' '+ str(self.first_name) +' '+ str(self.middle_name),
+                        'is_member': True,
+                        })
+        self.partner_id = part.id
         self.write({'state': 'wait'})
+
+    @api.multi
+    def button_cancel(self):
+        self.write({'state': 'draft'})
 
     @api.multi
     def button_make_confirm(self):
         self.write({'state': 'confirm'})
-        partner = self.env['res.partner'].search(
-            [('id', '=', self.partner_id.id)])
-        if partner:
-            partner.write({'is_member': True})
-
+        
         self.Appendto_Sponsor()
         return True
+    
+    @api.multi
+    def print_receipt(self):
+        report = self.env["ir.actions.report.xml"].search(
+            [('report_name', '=', 'member_app.spouse_single_receipt_template')], limit=1)
+        if report:
+            report.write({'report_type': 'qweb-pdf'})
+        return self.env['report'].get_action(
+            self.id, 'member_app.spouse_single_receipt_template')
+
 
     def Appendto_Sponsor(self):
         lists = []
@@ -2419,13 +2425,15 @@ class RegisterPaymentMember(models.Model):
             acm = self.env['account.payment.method'].create(
                 {'payment_type': 'inbound', 'name': rey.name, 'code': str(rey.id)})
             payment_data = {
-                'amount': rey.amount,  #  values.get('amount'),
+                'amount': rey.amount,  # values.get('amount'),
                 'payment_date': rey.date,
                 'partner_type': 'customer',
                 'payment_type': 'inbound',
                 'partner_id': rey.partner_id.id,
                 'journal_id': rey.payment_method.id,
                 'member_id': rey.member_ref.id,
+                'bank': rey.bank.id,
+                'narration':rey.reference,
                 'communication': "Membership Payment ",# + str(rey.name),
                 
                 'payment_method_id': acm.id,
@@ -2556,7 +2564,7 @@ class RegisterPaymentMember(models.Model):
                                'product_id': product,
                                'paid_amount': rey.amount,
                                'spouse_amount': fec.spouse_amount,
-                               'name':"Membership Form Payment",
+                               'name':"New Membership Subscription Fee",
                                'balance': balance,
                                'pdate': self.date,
                                'member_price': fec.total})

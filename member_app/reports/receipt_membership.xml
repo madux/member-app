@@ -87,30 +87,28 @@
 
 
                             <div class="row" style="font-size: 18px;">
-                                <div class="col-xs-6" style="text-align:left">
-								*	<span><strong><u>Receipt Allocated As Follows:</u></strong></span>
-                            	</div>
+								<span><strong><u>Member Name:</u></strong></span> <span t-field="o.partner_id.name"/>
+                                <span><strong><u>Receipt Allocated As Follows:</u></strong></span>
                                 <br/>
 								<t t-if="o.state in ['white','interview','wait']">
-														<strong>White form Cost: </strong>&#8358;<span t-field="o.int_form_price"/><br/>
-														<strong>Harmony Magazine: </strong>&#8358;<span t-field="o.harmony"/><br/>
-														<strong>Delay Charges: </strong>&#8358;<span t-field="o.delay_charges"/> <br/>
+														<strong>White form Cost:   </strong>&#8358;<span t-field="o.int_form_price"/><br/>
+														<strong>Harmony Magazine:  </strong>&#8358;<span t-field="o.harmony"/><br/>
+														<strong>Delay Charges:     </strong>&#8358;<span t-field="o.delay_charges"/> <br/>
 														
 								</t>
-
 								<t t-if="o.state in ['green','issue_green']">
-														<strong>Green Form Cost: </strong>&#8358;<span t-field="o.green_form_price"/><br/>
-														<strong>Coffee Cost: </strong>&#8358;<span t-field="o.coffee_book"/><br/>
+														<strong>Green Form Cost:   </strong>&#8358;<span t-field="o.green_form_price"/><br/>
+														<strong>Coffee Cost:       </strong>&#8358;<span t-field="o.coffee_book"/><br/>
 														<!-- <strong>Penalty charges: </strong>&#8358;<span t-field="o.penalty_charges"/> <br/> -->
 														
 								</t> 
 								<t t-if="o.state not in ['draft','white','green','interview','wait','issue_green']">
 														
-														<strong>Main House Cost: </strong>&#8358; <span t-field="o.main_house_cost"/><br/>
-														<strong>Subscription levy: </strong>&#8358; <span t-field="o.sub_levy"/><br/>
-														<strong>Spouse/Dependants: </strong>&#8358;<span t-field="o.spouse_amount"/><br/>
-														<strong>Special Levy: </strong>&#8358;<span t-field="o.special_levy"/><br/>
-														<strong>Entry Fee: </strong>&#8358;<span t-field="o.entry_fee"/><br/>
+														<strong>Main House Cost:    </strong>&#8358; <span t-field="o.main_house_cost"/><br/>
+														<strong>Subscription levy:  </strong>&#8358; <span t-field="o.sub_levy"/><br/>
+														<strong>Spouse/Dependants:  </strong>&#8358;<span t-field="o.spouse_amount"/><br/>
+														<strong>Special Levy:       </strong>&#8358;<span t-field="o.special_levy"/><br/>
+														<strong>Entry Fee:          </strong>&#8358;<span t-field="o.entry_fee"/><br/>
 														<!-- <strong>Penalty charges: </strong>&#8358;<span t-field="o.penalty_charges"/> <br/> -->
 														
 								</t>	
@@ -122,7 +120,7 @@
 									
 
 									<t t-if="o.subscription">
-										<span><strong>Section Details </strong></span>
+										<span><strong>Section </strong></span>
 											<thead>
 												<tr>
 													<th><strong>Name</strong></th>
@@ -139,7 +137,7 @@
 													<tr>
 														<td> <span t-esc="sub.name"/></td>
 														<td> <span t-esc="sub.subscription_period"/></td>
-														<td>&#8358; <span t-esc="sub.member_price"/></td>
+														<td>&#8358; <span t-esc="o.member_price"/></td>
 														<td>&#8358; <span t-esc="sub.entry_price"/></td>
 														<td>&#8358; <span t-esc="sub.special_levy"/></td>
 														<td>&#8358; <span t-esc="sub.sub_levy"/></td>
@@ -149,18 +147,22 @@
 											<t>
 												<td></td>
 												<td><strong>Net Total:</strong></td>
-												<td>&#8358; <span t-esc="sum(line.member_price for line in o.subscription)"/></td> 
+												<td>&#8358; <span t-esc="o.member_price"/></td> 
+												<td>&#8358; <span t-esc="o.entry_fee"/></td> 
+												<td>&#8358; <span t-esc="o.special_levy"/></td> 
+												<td>&#8358; <span t-esc="o.sub_levy"/></td> 
+												<!-- <td>&#8358; <span t-esc="sum(line.member_price for line in o.subscription)"/></td> 
 												<td>&#8358; <span t-esc="sum(line.entry_price for line in o.subscription)"/></td>
 												<td>&#8358; <span t-esc="sum(line.special_levy for line in o.subscription)"/></td>
 												<td>&#8358; <span t-esc="sum(line.sub_levy for line in o.subscription)"/></td>
-												
+												 -->
 											</t>
 										</t>
 
 										<t t-if="o.package">
 										
 											<thead>
-												<span><strong>Package Details and </strong></span>
+												<span><strong> and Package Breakdown </strong></span>
 												<tr>
 													<th><strong>Name</strong></th>
 													<th><strong>Period</strong></th>
@@ -207,8 +209,7 @@
 													<th><strong>Penalty</strong></th>
 													<th><strong>Amount Paid</strong></th>
 													<th><strong>Balance</strong></th>
-													<th><strong>Date</strong></th>
-													
+													<th><strong>Date</strong></th> 
 												</tr>
 											</thead>
 											<t t-foreach="o.payment_line2" t-as="pay">
@@ -232,9 +233,10 @@
 											
 											</t>
 									</t>
+										
 									<t t-if="o.sub_line">
 									
-										<span><strong>and Subscription Payments </strong></span>
+										<span><strong>Subscription Payments </strong></span>
 											<thead>
 												<tr>
 													<th><strong>Name</strong></th>
@@ -268,8 +270,67 @@
 												
 											</t>
 										</t>
-                                
-                                </table>
+                                </table><br/><br/><br/><br/>
+                               
+								<table class="table table-condensed">
+									<t t-if="o.depend_name">
+										<span><strong>Dependants Detail Details and </strong></span>
+										<t t-foreach="o.depend_name" t-as="pack">
+											<div class="row" >
+												<div class="col-xs-3" style="font-size: 17px;">
+													<b>Spouse Name: <span t-esc="pack.partner_id.name"/></b><br/>
+													<!-- <b>Address:</b><span t-esc="pack.street"/>,<span t-esc="pack.city"/>,<br/>
+													<b>Country: <span t-esc="pack.country_id.name"/></b><br/>
+													  -->
+												</div>
+											
+												<div class="col-xs-4 pull-right mt8" name ="right_name" style="font-size: 17px;">
+													
+													<b>Date: </b><span t-raw="time.strftime('%Y-%m-%d')"/>
+												</div>
+											</div> 
+											
+											<thead>
+													<tr>
+															
+																 
+																<th><strong>Subscription</strong></th>
+																<th><strong>Period</strong></th>
+																<th><strong>Subscription fee</strong></th>
+																<th><strong>Subscription Levy</strong></th>
+																<th><strong>Entry Fee</strong></th>
+																<th><strong>Special Levy</strong></th>
+																	
+														</tr>
+											</thead>
+													<!-- <t t-foreach="o.depend_name" t-as="pack"> -->
+											<t t-foreach="pack.spouse_subscription" t-as="pack_line">
+												<tbody>
+														<tr>
+																		 
+																		<td> <span t-esc="pack_line.subscription.name"/></td>
+																		<td><span t-esc="pack_line.subscription.subscription_period"/></td>
+																		<td>&#8358; <span t-esc="pack_line.member_price"/></td>
+																		<td>&#8358; <span t-esc="pack_line.sub_levy"/></td>
+																		<td>&#8358; <span t-esc="pack_line.entry_price"/></td>
+																		<td>&#8358; <span t-esc="pack_line.special_levy"/></td>
+																		
+														</tr>
+												</tbody>
+											</t>
+											<t>
+																	<td></td>
+																	<td><strong>Net Total.:</strong></td> 
+																	<td><span t-esc="sum(line.member_price for line in pack.spouse_subscription)"/></td>
+																	<td><span t-esc="sum(line.sub_levy for line in pack.spouse_subscription)"/></td>
+																	<td><span t-esc="sum(line.entry_price for line in pack.spouse_subscription)"/></td>
+																	<td><span t-esc="sum(line.special_levy for line in pack.spouse_subscription)"/></td>
+																	
+											</t> 
+														
+										</t>
+									</t> 
+								 </table>
 							</div>
 							<div class="row">
                                 <div class="col-xs-3" style="font-size: 20px;">
@@ -279,7 +340,7 @@
                                 </div>
                                 <div class="col-xs-4 pull-right mt8" name ="right_name" style="font-size: 20px;">
                                     <strong>Outanding</strong><br/>
-                                    <strong>&#8358; <span t-field="o.balance_total"/></strong>
+                                    <strong>&#8358; <span t-esc="sum(line.balance for line in o.payment_line2)"/></strong>
                                 </div>
                             </div><br/><br/>
 

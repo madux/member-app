@@ -24,6 +24,7 @@
         'reports/receipt_membership.xml',
         'reports/id_card_template.xml',
         'reports/id_card.xml',
+        'reports/spouse_receipt.xml',
         'reports/subscription_receipt.xml',
         'reports/bio_data.xml',
         'data/crons.xml',

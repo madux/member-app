@@ -71,6 +71,10 @@ class RegisterGuest(models.Model):
     partner_id = fields.Many2one(
         'res.partner', 'Name', domain=[
             ('is_member', '=', True)])
+
+    surname = fields.Char(string='Surname', required=True)
+    first_name = fields.Char(string='First Name', required=True)
+    middle_name = fields.Char(string="Middle Name")
     city = fields.Char('City')
     street = fields.Char('Street')
     url = fields.Char('Website')
@@ -126,7 +130,6 @@ class RegisterGuest(models.Model):
 
     binary_attach_receipt = fields.Binary('Attach Payment Teller')
     binary_fname_receipt = fields.Char('Binary receipt')
-    
     
     purpose_visit = fields.Text('Purpose of Visit')
     abroad_address = fields.Text('Address abroad')
@@ -228,6 +231,19 @@ class RegisterGuest(models.Model):
     def button_send_hon(self):  # draft memoffice
         self.write({'state': 'honourary'})
         self.fetch_followers()
+        partner = self.env['res.partner']#.search([('id', '=', self.partner_id.id)])
+        part = partner.create({'street': self.street,
+                        'email': self.email,
+                        'state_id': self.state_id.id,
+                        'title':self.title.id,
+                        'city':self.city,
+                        'image': self.image,
+                        'phone':self.phone,
+                        'function': self.occupation,
+                        'name': str(self.surname) +' '+ str(self.first_name) +' '+ str(self.middle_name),
+                        'is_member': True,
+                        })
+        self.partner_id = part.id
         return self.send_honour_mail()
 
     def fetch_followers(self):
@@ -256,7 +272,7 @@ class RegisterGuest(models.Model):
         group_users = groups.search([('id', '=', extra_user)])
         extra = str(email_from)
         if group_users:
-            group_emails = group_users.users[1]
+            group_emails = group_users.users[0] or ''
             extra = group_emails.login
         bodyx = "Sir/Madam, </br>We wish to notify you that a guest with name:\
          {} applies for guest membership on the date: {}.</br>\
@@ -280,7 +296,7 @@ class RegisterGuest(models.Model):
         group_users = groups.search([('id', '=', extra_user)])
         extra = str(email_from)
         if group_users:
-            group_emails = group_users.users[1]
+            group_emails = group_users.users[0]
             extra = group_emails.login
 
         bodyx = "Sir/Madam, </br>I wish to notify you that a request for guest \
