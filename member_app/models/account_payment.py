@@ -10,54 +10,47 @@ from odoo import http
 
 class account_payment(models.Model):
     _inherit = "account.payment"
-
     
+    balances = fields.Float('Balance', compute="get_balance")
+    amount_to_pay = fields.Float('To pay', compute="get_balance")
+    
+    @api.one
+    @api.depends('amount', 'payment_difference')
+    def get_balance(self):
+        # invoice = self.invoice_ids[0]
+        # topay = invoice.residual
+        total = self.amount + self.payment_difference
+        self.balances = total
+        self.amount_to_pay = self.amount + self.balances
+        
     @api.multi
     def post(self):
         res = super(account_payment, self).post()
-        # import pdb; pdb.set_trace()
-        product_name = 'Subscription'
-        product = 0
-        lists = []
-        sub_item = []
-        account = self.env['account.invoice'].search([('number', '=', self.communication)])
-        subscription = self.env['subscription.model'].search([('invoice_id', '=', account.id)])
-        if subscription:
-            for rep in subscription:
-                member_id = rep.member_id.id
-                member_browse = self.env['member.app'].search([('id', '=', member_id)])
-                amount_to_pay = self.amount + member_browse.balance_total
-                products = self.env['product.product']
-                product_search = products.search(
-                        [('name', 'ilike', product_name)])
-                if product_search:
-                    product = product_search[0].id
-                else:
-                    pro = products.create({'name': product_name, 'membershipx': True})
-                    product = pro.id
-                balance = rep.total - amount_to_pay
-                values = (0, 0,
-                           {'member_idx': member_id,
-                            'product_id': product,
-                            'paid_amount': amount_to_pay,
-                            'balance': balance,
-                            'pdate': self.payment_date,
-                            'member_price': rep.total,
-                            'name': "Subscription Payment"})
-                lists.append(values)
-                rep.total_paid += self.amount
-                if rep.total_paid + self.amount >= rep.total: 
-                    rep.write({'state': 'done'})
-                else:
-                    rep.write({'state': 'partial'})
-                for rex in rep.subscription:
-                    sub_item.append(rex.id)
-                if member_browse:
-                    # member_browse.balance_total += balance
-                    member_browse.payment_line2 = lists
-                    member_browse.subscription = sub_item
-                    
-                else:
-                    raise ValidationError('We do not find any record related to this member')
+        domain_inv = [('invoice_id', 'in', [item.id for item in self.invoice_ids])]
+        members_search = self.env['member.app'].search(domain_inv)
+        if members_search: 
+            members_search.state_payment_inv(self.amount, self.payment_date)  
+        else:
+            pass
+        domain_sub = [('invoice_id', 'in', [item.id for item in self.invoice_ids])]
+        sub_search = self.env['subscription.model'].search(domain_sub)
+        if sub_search:
+            sub_search.state_payment_inv(self.amount, self.payment_date, sub_search, self.payment_difference)
+        else:
+            pass
 
+        domain_guest = [('invoice_id', 'in', [item.id for item in self.invoice_ids])]
+        guest_search = self.env['register.guest'].search(domain_guest)
+        if guest_search:
+            guest_search.write({'state': 'wait'}) # state_payment_inv(self.amount, self.payment_date, guest_search, self.payment_difference)
+        else:
+            pass 
+        
+        domain_suspend = [('invoice_id', 'in', [item.id for item in self.invoice_ids])]
+        suspend_search = self.env['suspension.model'].search(domain_suspend)
+        if suspend_search:
+            suspend_search.state_payment_inv()
+        else:
+            pass 
         return res
+ 

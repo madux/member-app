@@ -68,8 +68,8 @@ class Spouse_Exclusion(models.Model):
 
     @api.multi
     def send_member_to_manager(self):
-        for rec in self:
-            rec.write({'state': 'manager'})
+        self.write({'state': 'manager'})
+        self.send_officermanager_mail()
 
     @api.multi
     def send_manager_confirm(self):
@@ -93,13 +93,29 @@ class Spouse_Exclusion(models.Model):
         self.mail_sending_one(email_from, mail_to, bodyx, subject)
 
     @api.multi
+    def send_officermanager_mail(self, force=False):
+        email_from = self.env.user.company_id.email
+        group_user_id = self.env.ref('member_app.membership_officer_ikoyi').id
+        extra_user = self.env.ref('member_app.manager_member_ikoyi').id
+        groups = self.env['res.groups']
+        group_users = groups.search([('id', '=', extra_user)], limit=1)
+        group_emails = group_users.users
+        extra = group_emails.login
+        bodyx = "Sir/Madam, </br>I wish to notify you that a request to \
+        exclude a spouse with name: {} have been sent to you for approval\
+        on the date: {}.</br>\
+        Kindly <a href={}> </b>Click <a/> to Login to the ERP to view</br> \
+        Thanks".format(self.name.partner_id.name, fields.Datetime.now(), self.get_url(self.id, self._name))
+        self.mail_sending(email_from, group_user_id, extra, bodyx)
+        
+    @api.multi
     def send_memofficer_mail(self, force=False):
         email_from = self.env.user.company_id.email
         group_user_id = self.env.ref('member_app.membership_officer_ikoyi').id
         extra_user = self.env.ref('member_app.manager_member_ikoyi').id
         groups = self.env['res.groups']
-        group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[1]
+        group_users = groups.search([('id', '=', extra_user)], limit=1)
+        group_emails = group_users.users
         extra = group_emails.login
         bodyx = "Sir/Madam, </br>I wish to notify you that a request to \
         exclude a spouse with name: {} have been sent to you for approval\

@@ -14,6 +14,7 @@ TYPE2JOURNAL = {
         'in_refund': 'purchase',
 }
 
+
 class Suspend_Member(models.Model):
     _name= "suspension.model"
     _inherit = ['mail.thread', 'ir.needaction_mixin']
@@ -50,40 +51,75 @@ class Suspend_Member(models.Model):
     date = fields.Datetime('Date', required=True)
     suspension_date = fields.Datetime('Suspension Date')
     users_followers = fields.Many2many('hr.employee', string='Add followers')
-    subscription = fields.Many2many('subscription.payment', string ='Add Sections', compute='get_all_packages')
-    package = fields.Many2many('package.model', string ='Packages', readonly=False,  compute='get_all_packages')# ,compute='get_all_packages')
+    subscription = fields.Many2many('subscription.payment', string ='Add Sections') # , compute='get_all_packages')
+    package = fields.Many2many('package.model', string ='Packages', readonly=False)#  compute='get_all_packages')# ,compute='get_all_packages')
     state = fields.Selection([('draft','Draft'),
                                 ('hon_sec','Honourary'),
                                 ('member','Membership Officer'),
                                 ('manager_approve','Manager'),
-                                 ('suspend','Suspended'),
+                                ('suspend','Suspended'),
                                 ], default = 'draft', string='Status')
-    main_house_cost = fields.Float('Main House Fee',required=True)
+    mode= fields.Selection(
+                string=u'Suspension Type', 
+                required=True,
+                selection=[('no_self_suspend', 'Self Suspension'), ('club_suspension', 'Club Suspension')]
+            )
+    main_house_cost = fields.Float('Main House Fee',required=False)
+    payment_ids = fields.Many2many(
+        'account.payment',
+        string='All Payments', compute="_get_record_ids")
+    invoice_id = fields.Many2many('account.invoice', string='Invoice', store=True)
+    balance_total = fields.Integer(
+        'Outstandings',  compute="get_pay_balance_total"
+        )
+    
      
-    @api.depends('partner_id')
+    @api.depends('member_id')
+    def _get_record_ids(self):
+        payment_list = []
+        invoice_lists = []
+        for rec in self.member_id.payment_ids:
+            payment_list.append(rec.id)
+        # for ref in self.member_id.invoice_id:
+        #     invoice_lists.append(rec.id)
+        self.payment_ids = payment_list
+        # self.invoice_id = invoice_lists
+        
+    @api.one
+    @api.depends('payment_ids')
+    def get_pay_balance_total(self):
+        balance = 0.0 
+        for tec in self.payment_ids:
+            balance += tec.balances
+        self.balance_total = balance
+         
+    @api.depends('member_id')
     def get_all_packages(self):
-        get_package = self.env['member.app'].search([('partner_id','=',self.partner_id.id)])
-        appends = []
-        appends2 = []
-        for rec in self:
-            for ret in get_package.package:
-                appends.append(ret.id)
-            for rett in get_package.subscription:
-                appends2.append(rett.id)
-            rec.package = [(6,0,appends)]
-            rec.subscription = [(6,0,appends2)]
-
+        pass
+        # get_member = self.env['member.app'].search([('partner_id','=',self.partner_id.id)])
+        # appends = []
+        # appends2 = []
+        # for ret in get_member.invoice_id:
+        #     appends.append(ret.id)
+        # for rett in get_package.subscription:
+        #     appends2.append(rett.id)
+        # self.package = [(6,0, appends)]
+        # self.subscription = [(6,0,appends2)]
+    @api.one
     @api.depends('partner_id')
     def Domain_Member_Field(self):
-        for record in self:
-            member = self.env['member.app'].search([('partner_id', '=', record.partner_id.id)])
+        member = self.env['member.app'].search([('partner_id', '=', self.partner_id.id)], limit=1)
+        
+        if member:
             for tec in member:
-                record.main_house_cost = tec.main_house_cost
-                record.account_id = tec.account_id.id
-                record.identification = tec.identification
-                record.email = tec.email
-                record.member_id = tec.id
- # # #  BUTTON S             
+                self.main_house_cost = tec.main_house_cost
+                self.account_id = tec.account_id.id
+                self.identification = tec.identification
+                self.email = tec.email
+                self.member_id = tec.id
+        else:
+            raise ValidationError('No record matched')
+
     @api.multi
     def send_to_hon(self):
         self.write({'state':'hon_sec'})
@@ -93,7 +129,6 @@ class Suspend_Member(models.Model):
     def send_to_hon_back(self):
         self.write({'state':'draft'})
         # self.send_mail_to_manager()
-        
         
     @api.multi
     def send_hon_to_manager(self):
@@ -139,7 +174,9 @@ class Suspend_Member(models.Model):
              Kindly </br><a href={}> </b>Click <a/> to review. Thanks"\
              .format(self.identification,fields.Datetime.now(),self.get_url(self.id, self._name))
         self.mail_sending(email_from,group_user_id,extra,bodyx) 
-            
+        
+        
+       
     @api.multi
     def send_mail_to_manager(self, force=False):
         email_from = self.env.user.company_id.email
@@ -189,8 +226,69 @@ class Suspend_Member(models.Model):
             mail_id =  order.env['mail.mail'].create(mail_data)
             order.env['mail.mail'].send(mail_id)
     
-    # order.write({'payment_line': [(0, 0, values)],'payment_line2': [(0, 0, values)],'payment_status':'gpaid'})
+    def define_package_invoice_line(self,invoice):
+        products = self.env['product.product']
+        invoice_line_obj = self.env["account.invoice.line"]
+         
+        inv_id = invoice.id
+        for pack in self.package:
+            product_search = products.search([('name', '=ilike', pack.name)], limit=1)
+            if product_search:      
+                total = product_search.list_price # * self.number_period
+                curr_invoice_pack = {
+                                'product_id': product_search.id,
+                                'name': "Charge for "+ str(product_search.name),
+                                'price_unit': total, 
+                                'quantity': 1.0,
+                                'account_id': product_search.categ_id.property_account_income_categ_id.id or self.account_id.id,
+                                'invoice_id': inv_id,
+                                }
+
+                invoice_line_obj.create(curr_invoice_pack) 
+  
+        
+    @api.multi
+    def create_member_bill(self):
+        
+        """ Create Customer Invoice for members.
+        """
+        invoice_list = [] 
+        products = self.env['product.product']
+        invoice_line_obj = self.env["account.invoice.line"]
+        invoice_obj = self.env["account.invoice"]
+        amount = 0.0
+        for inv in self:
+            invoice = invoice_obj.create({
+                'partner_id': inv.partner_id.id,
+                'account_id': inv.partner_id.property_account_payable_id.id, 
+                'fiscal_position_id': inv.partner_id.property_account_position_id.id,
+                'branch_id': self.env.user.branch_id.id, 
+                'date_invoice': datetime.today(),
+                'type': 'out_invoice', # vendor
+                # 'type': 'out_invoice', # customer
+            }) 
+             
+            self.define_package_invoice_line(invoice) 
+            invoice_list.append(invoice.id) 
+            member_get = self.env['member.app'].search([('id','=',self.member_id.id)])
+            if member_get:       
+                member_get.write({'invoice_id':[(4, invoice_list)]}) 
+            form_view_ref = self.env.ref('account.invoice_form', False)
+            tree_view_ref = self.env.ref('account.invoice_tree', False)
+            self.write({'invoice_id':[(4, invoice_list)]}) 
+            return {
+                    'domain': [('id', '=', [item.id for item in self.invoice_id])],
+                    'name': 'Invoices',
+                    'view_mode': 'form',
+                    'res_model': 'account.invoice',
+                    'type': 'ir.actions.act_window',
+                    'views': [(tree_view_ref.id, 'tree'), (form_view_ref.id, 'form')],
+                } 
     
+    @api.multi
+    def payment_button(self):
+        return self.create_member_bill()
+     
     @api.multi
     def button_payments(self,name,amount,level):#  Send memo back
         return {
@@ -215,22 +313,26 @@ class Suspend_Member(models.Model):
                   # 'default_communication':self.number
               },
         }
-        
     @api.multi
-    def payment_button(self):
-        name = "Self Suspension Payment Fee"
-        percent = 50/100
-        amountx = self.main_house_cost * percent
-        level = 'Suspension'
-        return self.button_payments(name,amountx,level)
+    def send_mail_officer_main(self, force=False):
+        email_from = self.env.user.company_id.email
+        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id 
+        extra=self.env.user.company_id.email
+        bodyx = "Dear Sir/Madam, </br>We wish to notify that the member with ID {} have requested for self suspension from Ikoyi Club on the date: {} </br>\
+             He has also completed his payments.</br> Kindly </br><a href={}> </b>Click <a/> to review. Thanks"\
+             .format(self.identification,fields.Datetime.now(),self.get_url(self.id, self._name))
+        self.mail_sending(email_from,group_user_id,extra,bodyx) 
+          
+    def state_payment_inv(self):
+        self.send_mail_officer_main()
+        self.write({'state':'manager_approve'})
         
-class RegisterPaymentMembery(models.Model):
-    _inherit = "register.payment.member"
-    _order = "id desc"
-    @api.one
-    def button_pay(self):
-        data = super(RegisterPaymentMembery,self).button_pay()
-        suspend_id = self.env['suspension.model'].search([('id','=', self.num)])
-        if suspend_id:
-            suspend_id.write({'state':'manager_approve'})
-        return data
+        
+    # @api.multi
+    # def payment_button(self):
+    #     name = "Self Suspension Payment Fee"
+    #     percent = 50/100
+    #     amountx = self.main_house_cost * percent
+    #     level = 'Suspension'
+    #     return self.button_payments(name,amountx,level)
+         

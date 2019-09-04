@@ -36,8 +36,7 @@ class Reinstate_Member(models.Model):
         return result
 
     binary_attach_letter = fields.Binary('Attach letter')
-    binary_fname_letter = fields.Char('Attach Report')
-    
+    binary_fname_letter = fields.Char('Attach Report') 
     member_id = fields.Many2one(
         'member.app',
         'Member ID',
@@ -45,13 +44,9 @@ class Reinstate_Member(models.Model):
         readonly=False,
         )
     identification = fields.Char('Identification.', compute="GET_Member_Field", store=True, size=6)
-    email = fields.Char('Email', compute="GET_Member_Field",store=True)
-      
-    date = fields.Datetime('Date', required=True)
-    # suspension_date = fields.Datetime('Suspension Date')
-    
-    description_two = fields.Text('Refusal Reasons')
-
+    email = fields.Char('Email', compute="GET_Member_Field",store=True) 
+    date = fields.Datetime('Date', required=True) 
+    description_two = fields.Text('Refusal Reasons') 
     users_followers = fields.Many2many('hr.employee', string='Add followers')
     subscription = fields.Many2many(
         'subscription.payment',
@@ -74,35 +69,27 @@ class Reinstate_Member(models.Model):
                               ('fined', 'Fined'),
                               ('manager_approve', 'Manager'),
                               ('done', 'Done'),
-                              
                               ], default='draft', string='Status')
     payments_all = fields.Many2many(
         'member.payment.new',
         string='All Payments',
         readonly=False,
-        store=True,compute='get_all_packages'
-        )
-    
+        store=True,compute='get_all_packages')
     p_type = fields.Selection([('yes', 'No'),
                                ('no', 'Yes'),
                                
-                               ], default='no', string='Anomaly')
-
-    # # # # 
+                               ], default='no', string='Anomaly') 
     payment_renew = fields.Many2many(
         'subscription.line',
         string='Renewals Payments',
         readonly=False,compute='get_all_packages',
         store=True,
-        )
-    
+        ) 
     balance = fields.Float(string='Balance',store=True, compute='get_all_cost', default=0.0)
-
     total = fields.Float(
-        'Total paid Fee', store=True, compute='get_all_cost'
-        )
+        'Total paid Fee', store=True, compute='get_all_cost')
     addition = fields.Float(
-        'Extra Charge', default=100000,
+        'Extra Charge', default=100000, required=True,
         )
     last_date = fields.Date('Last Subscribed Date', store=True, compute='lastdate', required=False)
     account_id = fields.Many2one('account.account', compute="GET_Member_Field",
@@ -120,13 +107,11 @@ class Reinstate_Member(models.Model):
                 'invoice_id': [('partner_id', '=', self.member_id.partner_id.id), ('state', '!=', 'paid')],
                 }
         return res
-
-
+ 
     @api.depends('payment_renew','payments_all')
     def get_all_cost(self):
         total_bal = 0.0
-        total1 = 0.0
-        
+        total1 = 0.0 
         total_bal2 = 0.0
         total2 = 0.0
         for rec in self.payment_renew:
@@ -134,8 +119,7 @@ class Reinstate_Member(models.Model):
             total1 += rec.paid_amount
         for tec in self.payments_all:
             total_bal2 += tec.balance
-            total2 += tec.paid_amount
-            
+            total2 += tec.paid_amount 
         self.balance = total_bal + total_bal2
         self.total = total1 + total2
     
@@ -168,19 +152,17 @@ class Reinstate_Member(models.Model):
         for pec in get_package.sub_line:
             appends4.append(pec.id)
                  
-        self.package = [(6, 0, appends)] #[(4, r.id)]  #  [(6,0,r.id)]
-        self.subscription = [(6, 0, appends2)] #[(4, r2.id)]  #  [(6,0,r2.id)] [(4,r)] o(n2)
-        self.payments_all = [(6, 0,appends3)] #[(4, r.id)]  #  [(6,0,r.id)]
-        self.payment_renew = [(6, 0,appends4)] #[(4, r2.id)]  #  [(6,0,r2.id)] [(4,r)] o(n2)
+        self.package = [(6, 0, appends)] 
+        self.subscription = [(6, 0, appends2)]  
+        self.payments_all = [(6, 0,appends3)] 
+        self.payment_renew = [(6, 0,appends4)] 
     
     @api.depends('payment_renew')        
     def lastdate(self):
         for rec in self:  
             for date in rec.payment_renew:
                 last_date = date[-1].pdate
-                self.last_date = last_date
-                
-    
+                self.last_date = last_date 
     # ######### MEMBERSHIP CREATES INVOICE ON DRAFT ###############
     
     @api.multi
@@ -245,8 +227,7 @@ class Reinstate_Member(models.Model):
         bodyx = "Dear Sir/Madam, </br>I wish to notify you that a member with-ID {} , has Anomalies on his payment with invoice Ref: {} \
         paid on the date: {} </br> Kindly <a href={}> </b>Click <a/> to Login to the ERP to view</br> \
         </br>Thanks" .format(self.identification, self.invoice_id.name, self.invoice_id.date_invoice, self.get_url(self.id, self._name))
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
-        
+        self.mail_sending(email_from, group_user_id, extra, bodyx) 
      
     @api.multi
     def send_mail_ano_member_officer(self, force=False):  #  draft 
@@ -259,9 +240,7 @@ class Reinstate_Member(models.Model):
         bodyx = "Dear Sir/Madam, </br>I wish to notify you that a member with-ID {} , has  been fined 12.5 % for \
         Anomalies in your payment. \
         </br>Thanks" .format(self.identification)
-        self.mail_sending_single(email_from, group_user_id, email, bodyx)
-    
-    
+        self.mail_sending_single(email_from, group_user_id, email, bodyx) 
             
     @api.multi
     def button_create_invoice(self):  # invoice memberofficer
@@ -347,8 +326,7 @@ class Reinstate_Member(models.Model):
         else:
             if self.state == "internalcontrol":
                 self.state = "draft"
-                self.reject_mail()
-                
+                self.reject_mail() 
     
     @api.multi 
     def send_mail_biodata_to_member(self, force=False):  # paid
@@ -400,9 +378,7 @@ class Reinstate_Member(models.Model):
         percent = 12.5 / 100
         amount = 0.0
         amount = percent * (self.addition + self.balance)
-        name = "Fine"
-            #return self.button_payments(amount, name)
-        
+        name = "Fine" 
         form_view_ref = self.env.ref('account.view_account_payment_form', True)
         return {
             'name': name,
@@ -428,9 +404,7 @@ class Reinstate_Member(models.Model):
             }
         }
 ################# Anomaly ############################
-    
-    
-    
+     
     def mail_sending_one(self, email_from, mail_to, bodyx, subject):
         REPORT_NAME = 'member_app.print_biodata_template' #ikoyi_module.print_creditdebit_template
         # pdf = self.env['report'].sudo().get_pdf([invoice.id], 'ikoyi_module.print_credit_report')
@@ -500,7 +474,6 @@ class Reinstate_Member(models.Model):
         product_search = products.search(
             [('name', '=ilike', 'Reinstatement')])
         if product_search:
-            #  product.append(product_search.id)
             product = product_search[0].id
         else:
             pro = products.create(
@@ -536,9 +509,7 @@ class Reinstate_Member(models.Model):
                 #'invoice_line_tax_ids': [],
                 'account_id': partner.member_id.partner_id.property_account_payable_id.id or partner.account_id.id,
 
-            }
-            #  create a record in cache, apply onchange then revert back to a
-            #  dictionnary
+            } 
             invoice_line = self.env['account.invoice.line'].new(line_values)
             invoice_line._onchange_product_id()
             line_values = invoice_line._convert_to_write(
@@ -575,8 +546,7 @@ class Reinstate_Member(models.Model):
         }
 
     @api.multi
-    def see_breakdown_invoice(self):  # vis_account,
-
+    def see_breakdown_invoice(self): 
         search_view_ref = self.env.ref(
             'account.view_account_invoice_filter', False)
         form_view_ref = self.env.ref('account.invoice_form', False)
@@ -642,18 +612,12 @@ class Reinstate_Member(models.Model):
             email_to = []
              
             for gec in group_emails:
-                email_to.append(gec.login)
-                
-             
- 
+                email_to.append(gec.login) 
             email_froms = str(from_browse) + " <" + str(email_from) + ">"
             #mail_appends = (', '.join(str(item)for item in followers))
             mail_to = (','.join(str(item2)for item2 in email_to))
              
-            subject = "Member Reinstatement Notification"
-
-            #extrax = (', '.join(str(extra)))
-            #followers.append(extrax)
+            subject = "Member Reinstatement Notification" 
             mail_data = {
                 'email_from': email_froms,
                 'subject': subject,
@@ -671,213 +635,4 @@ class Reinstate_Member(models.Model):
         base_url += '/web# id=%d&view_type=form&model=%s' % (id, model)
 
  #  BUTTON S
-    
-
-    '''@api.multi
-    def send_mail_to_member(self, force=False):  #  draft
-        email_from = self.env.user.company_id.email
-        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
-        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
-        extra = self.email
-        bodyx = "Dear Sir/Madam, </br>We wish to notify that you -ID {} , that your membership subscription is \
-        due for payment on the date: {} </br> Kindly contact the Ikoyi Club 1938 for any further enquires. \
-        </br>Thanks" .format(self.identification, fields.Datetime.now())
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
-
-    @api.multi
-    def send_mail_to_member_sub(self, force=False):  #  draft
-        email_from = self.env.user.company_id.email
-        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
-        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
-        extra = self.email
-        bodyx = "Dear Sir/Madam, </br>We wish to notify that you -ID {} , that your membership subscription \
-        have been updated on the date: {}. </br> Kindly contact the Ikoyi Club 1938 for any further enquires. \
-        </br>Thanks" .format(self.identification, fields.Datetime.now())
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
-
-    @api.multi
-    def send_mail_to_accountmanager(self, force=False):
-        email_from = self.env.user.company_id.email
-        group_user_id = self.env.ref('ikoyi_module.account_boss_ikoyi').id
-        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
-
-        extra = self.email
-        bodyx = "Sir/Madam, </br>We wish to notify you that a member with ID: {} had Anomalities on renewal payments on the date: {}.</br>\
-             Kindly <a href={}> </b>Click <a/> to Login to the ERP to view</br> \
-             Thanks".format(self.identification, fields.Datetime.now(), self.get_url(self.id, self._name))
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
-
-    @api.multi
-    def send_mail_to_mem_officer(self, force=False):
-        email_from = self.env.user.company_id.email
-        group_user_id = self.env.ref('member_app.membership_officer_ikoyi').id
-        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
-        extra_user = self.env.ref('member_app.manager_member_ikoyi').id
-
-        groups = self.env['res.groups']
-        group_users = groups.search([('id', '=', extra_user)])
-        group_emails = group_users.users[1]
-        extra = group_emails.login
-
-        #  extra=self.email
-        bodyx = "Sir/Madam, </br>We wish to notify you that a member with ID: {} had Anomalities on renewal payments on the date: {}.</br>\
-             Kindly <a href={}> </b>Click <a/> to Login to the ERP to view</br> \
-             Thanks".format(self.identification, fields.Datetime.now(), self.get_url(self.id, self._name))
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
-
-    @api.multi
-    def button_subscribe(self):  #  draft, fine
-        self.write({'state': 'suscription'})
-        self.send_mail_to_member_sub()
-
-    @api.multi  #  suscription , mem_manager
-    def button_anamoly(self):
-        self.write({'state': 'manager_approve', 'p_type': 'ano'})
-        return self.send_mail_to_accountmanager()
-
-    @api.multi
-    def send_Finmanager_Fine(self):  #  manager_approve , accountboss
-        self.write({'state': 'fined'})
-        self.send_mail_to_mem_officer()
-        return self.payment_button_normal()
-
-    @api.multi
-    def payment_button_normal(self):  #  suscription, 
-        name = "."
-        amount = 0.0  #  * percent
-        level = ''
-        if self.p_type != "ano":
-            level = 'Renewed Subscription'
-            amount = self.total
-            name = "Renewed Subscription"
-            return self.button_payments(name, amount, level)
-        
-    @api.multi
-    def payment_button_anormally(self):  #  suscription, manager_approve
-        name = "."
-        percent = 12.5 / 100
-        amount = 0.0  #  * percent
-        level = ''
-        if self.p_type == "ano":
-            level = 'Fine'
-            amount = percent * self.total
-            name = "Fine"
-            return self.button_payments(name, amount, level)
-
-# #  FUNCTIONS # # # # # 
-    @api.multi
-    def send_mail_suspend(self, force=False):
-        email_from = self.env.user.company_id.email
-        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
-        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
-        extra = self.email
-        bodyx = "Dear Sir/Madam, </br>We wish to notify that the member with ID {} have been Suspended from Ikoyi Club on the date: {} </br>\
-             Kindly contact the Ikoyi Club 1938 for any further enquires. </br><a href={}> </b>Click <a/> to review. Thanks"\
-             .format(self.identification, fields.Datetime.now(), self.get_url(self.id, self._name))
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
-
-    def get_url(self, id, model):
-        base_url = http.request.env['ir.config_parameter'].sudo(
-        ).get_param('web.base.url')
-        base_url += '/web# id=%d&view_type=form&model=%s' % (id, model)
-
-    def mail_sending(self, email_from, group_user_id, extra, bodyx):
-        from_browse = self.env.user.name
-        groups = self.env['res.groups']
-        for order in self:
-            group_users = groups.search([('id', '=', group_user_id)])
-            group_emails = group_users.users
-            followers = []
-            email_to = []
-            for group_mail in self.users_followers:
-                followers.append(group_mail.work_email)
-
-            for gec in group_emails:
-                email_to.append(gec.login)
-
-            email_froms = str(from_browse) + " <" + str(email_from) + ">"
-            mail_appends = (', '.join(str(item)for item in followers))
-            mail_to = (','.join(str(item2)for item2 in email_to))
-            subject = "Member Reinstatement Notification"
-
-            extrax = (', '.join(str(extra)))
-            followers.append(extrax)
-            mail_data = {
-                'email_from': email_froms,
-                'subject': subject,
-                'email_to': mail_to,
-                'email_cc': mail_appends,  #  + (','.join(str(extra)),
-                'reply_to': email_from,
-                'body_html': bodyx
-            }
-            mail_id = order.env['mail.mail'].create(mail_data)
-            order.env['mail.mail'].send(mail_id)
-
-    # order.write({'payment_line': [(0, 0, values)],'payment_line2': [(0, 0, values)],'payment_status':'gpaid'})
-
-    @api.multi
-    def button_payments(self, name, amount, level):  #  Send memo back
-        return {
-            'name': name,
-            'view_type': 'form',
-            "view_mode": 'form',
-            'res_model': 'register.payment.member',
-            'type': 'ir.actions.act_window',
-            'target': 'new',
-            'context': {
-                'default_payment_type': "outbound",
-                'default_date': fields.Datetime.now(),
-                'default_amount': amount,
-
-                'default_partner_id': self.partner_id.id,
-                'default_member_ref': self.member_id.id,
-                'default_name': "Subscription Payments",
-                'default_level': level,
-                'default_to_pay': amount,
-                'default_num':self.id,
-                'default_p_type': self.p_type,
-
-                #  'default_communication':self.number
-            },
-        }
-        
-        
-class RegisterPaymentMemberx(models.Model):
-    _inherit = "register.payment.member"
-    _order = "id desc"
-    @api.multi
-    def button_pay(self,values):
-        self.ensure_one()
-        ids = values.get('member_ref')
-        data = super(RegisterPaymentMemberx,self).button_pay()
-        mem = self.env['subscription.model'].search([('id','=', self.num)])
-        if mem:
-            #raise Validation('Fire %d' %mem.id)
-            mem.write({'state':'done'})
-            
-        return data
-
-class subscription_LineMain(models.Model):
-    _name = "subscription.line"
-
-    member_id = fields.Many2one('member.app', 'Member ID')
-    sub_order = fields.Many2one('subscription.model', 'Member ID')
-    name = fields.Char('Activity', required=True)
-
-    total_price = fields.Float(
-        string='Total Price',
-        digits=dp.get_precision('Product Price'),
-        required=True)
-    paid_amount = fields.Float(string='Paid Amount')
-    balance = fields.Float(string='Balance')
-
-    pdate = fields.Date(
-        'Subscription Date',
-        default=fields.Date.today(),
-        required=True)
-    periods_month = fields.Selection([('bi_month', 'Bi-Monthly'),
-                                      ('full_Year', 'Full Year'),
-                                      ('quarter_ly', 'Quarterly'),
-
-                                      ], string='Periods', required=True)
-                                      '''
+     

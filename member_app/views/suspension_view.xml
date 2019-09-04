@@ -27,8 +27,7 @@
                                     <field name="state" widget="statusbar" statusbar_visible="draft,hon_sec,manager_approve,suspend"/>
                                 </header>
                         <sheet>
-                           
-                        <!-- <field name="image" widget="image" class="oe_avatar"/>-->
+                            
                             <label for="Name" class="oe_edit_only"/>
                             <h1>
                                 <field name="partner_id" default_focus="1" placeholder="Name" options="{'limit': 1}"/>
@@ -38,22 +37,40 @@
                                 <field name="member_id" />
                                 <field name="email" widget="email" />
                                 <field name="account_id" options="{&quot;no_open&quot;: True}" />
-                                <field name="identification"/>                      
+                                <field name="identification"/>    
+                                <field name="mode" required="1"/>                  
                             </group>
                             <group>
                                 <field name="date" string="Request Date"/>
                                 <field name="suspension_date"/>
-                                <field name="users_followers" widget="many2many_tags"/>
+                                <field name="users_followers" widget="many2many_tags"/> 
+                                <field name="package" readonly="0" widget="many2many_tags" string="Sessions" required="1"/>
+                                <field name="balance_total" readonly="0"/>
                                 
-                                <field name="main_house_cost"/>
-                                    
+                                <!-- <field name="invoice_id" invisible="0" string ="Invoices" widget="many2many_tags"/>
+                                     -->
                             </group>
                         </group>
 
                         <notebook colspan="4">
-                                    
-
-                            <page name="section_package" string="Sections">
+                            <page name="suspension_payment" string="Membership Payments">
+                                <separator string="Additional Payment History" colspan="4"/>
+                                <field name="payment_ids" attrs="{'invisible':[('state','=','draft')]}" readonly="0">
+                                 
+                                    <tree string="Payments" editable="bottom"> 
+                                        <field name="name"/>
+                                        <field name="journal_id"/>
+                                        <field name="bank"/>
+                                        <field name="amount_to_pay" invisible="0"/>
+                                        <field name="amount" string="Paid Amount"/>
+                                        <field name="balances" invisible="0"/>
+                                        <field name="payment_date"/>
+                                        <field name="additional_ref"/>
+                                    </tree>
+                                </field>
+                            </page>
+                           
+                            <!-- <page name="section_package" string="Sections">
                                 <field name="subscription" readonly="0" attrs="{'readonly': [('state', '!=', 'draft')]}">
                                 <p style="color: red;">* See Sections</p>
                                 <tree string="Sections" editable="bottom">
@@ -74,7 +91,7 @@
                                     
                                 </tree>
                                 </field>
-                            </page>
+                            </page> -->
 
                         </notebook>
 

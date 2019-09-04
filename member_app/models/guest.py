@@ -91,7 +91,7 @@ class RegisterGuest(models.Model):
         string='Parent Member',
         required=True)
     account_id = fields.Many2one('account.account', 'Account')
-    invoice_id = fields.Many2one('account_id', 'Invoice', store=True)
+    invoice_id = fields.Many2many('account.invoice', string='Invoice', store=True)
 
     product_id = fields.Many2one(
         'product.product', string='Membership type', domain=[
@@ -172,30 +172,64 @@ class RegisterGuest(models.Model):
                                     copy=False,
                                     track_visibility='always')
 
-    '''@api.model
-    def create(self, vals):
-        res = super(RegisterSpouseMember, self).create(vals)
-        partner_id = vals.get('partner_id')
-        partner = self.env['res.partner'].search([('id','=',partner_id)])
-        if partner:
-            partner.write({'is_member':True})
-        return res'''
+    def define_invoice_line(self, product_name,invoice, amount):
+        products = self.env['product.product']
+        invoice_line_obj = self.env["account.invoice.line"]
+        product_search = products.search([('name', '=ilike', product_name)], limit=1)
+        inv_id = invoice.id
+        journal = self.env['account.journal'].search([('type', '=', 'sale')], limit=1)
+        prd_account_id = journal.default_credit_account_id.id
+        curr_invoice_line = {
+                                'product_id': product_search.id,
+                                'name': "Charge for "+ str(product_search.name),
+                                'price_unit': amount,
+                                'quantity': 1.0,
+                                'account_id': product_search.categ_id.property_account_income_categ_id.id,
+                                'invoice_id': inv_id,
+                            }
 
-    '''@api.onchange('sponsor')
-    def change_details(self):
-        for rec in self:
-            for fec in rec.sponsor:
-                lists = []
-                for tec in fec.subscription:
-                    lists.append(tec.id)
-                rec.subscription = [(6,0,lists)]'''
+        invoice_line_obj.create(curr_invoice_line)
+        
+    @api.multi
+    def create_member_bill(self, product_name):
+        product_name = product_name
+        """ Create Customer Invoice for members.
+        """
+        invoice_list = []
+        qty = 1
+        products = self.env['product.product']
+        invoice_line_obj = self.env["account.invoice.line"]
+        invoice_obj = self.env["account.invoice"] 
+        product_search = products.search([('name', '=ilike', product_name)], limit=1)
+        
+        for inv in self:
+            invoice = invoice_obj.create({
+                'partner_id': inv.partner_id.id,
+                'account_id': inv.partner_id.property_account_payable_id.id, 
+                'fiscal_position_id': inv.partner_id.property_account_position_id.id,
+                'branch_id': self.env.user.branch_id.id, 
+                'date_invoice': datetime.today(),
+                'type': 'out_invoice', # vendor
+                # 'type': 'out_invoice', # customer
+            }) 
+            if self.state == 'invoice':
+                amount = product_search.list_price #+ product_harmony.list_price # 
+                self.define_invoice_line(product_name, invoice, amount)
+            
+            invoice_list.append(invoice.id) 
+            form_view_ref = self.env.ref('account.invoice_form', False)
+            tree_view_ref = self.env.ref('account.invoice_tree', False)
+            self.write({'invoice_id':[(4, invoice_list)]}) 
+            return {
+                    'domain': [('id', '=', [item.id for item in self.invoice_id])],
+                    'name': 'Invoices',
+                    'view_mode': 'form',
+                    'res_model': 'account.invoice',
+                    'type': 'ir.actions.act_window',
+                    'views': [(tree_view_ref.id, 'tree'), (form_view_ref.id, 'form')],
+                } 
 
-    '''@api.depends('product_id')
-    def get_section_member_price(self):
-        total = 0.00
-        for rem in self:
-            total = rem.product_id.list_price
-            rem.member_price = total'''
+     
 
     @api.depends('dob')
     def get_duration_age(self):
@@ -221,14 +255,13 @@ class RegisterGuest(models.Model):
         total2 = 0.
         for ret in self.package:
             total1 += ret.package_cost
-
         for rm in self.subscription:
-            total2 += rm.member_price
+            total2 += rm.total_cost
         self.member_price = total2
         self.package_cost = total1
 
     @api.multi
-    def button_send_hon(self):  # draft memoffice
+    def button_send_hon(self): # draft memoffice
         self.write({'state': 'honourary'})
         self.fetch_followers()
         partner = self.env['res.partner']#.search([('id', '=', self.partner_id.id)])
@@ -307,10 +340,11 @@ class RegisterGuest(models.Model):
 
     # # # # # # # # # # # # # # # # # # # # # # # # #
     @api.multi
-    def button_send_invocie_wait(self):  # invoice memberofficer
-        self.write({'state': 'wait'})
+    def button_send_invocie_wait(self): 
+        product_name = "Guest Subscription"
         self.send_mail_workplace()
-        return self.create_invoice()
+        return self.create_member_bill(product_name)
+        # return self.create_invoice()
 
     @api.multi
     def send_mail_workplace(self, force=False):

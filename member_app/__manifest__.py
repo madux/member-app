@@ -27,7 +27,9 @@
         'reports/spouse_receipt.xml',
         'reports/subscription_receipt.xml',
         'reports/bio_data.xml',
+        'reports/print_invoice_receipt.xml',
         'data/crons.xml',
+        'data/product_data.xml',
         
         
     ],

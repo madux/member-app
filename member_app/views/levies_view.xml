@@ -57,8 +57,8 @@
         name="Mainhouse Setting"
         res_model="levies.model"
         view_mode="tree,form"/>
-        <menuitem id ="menu_memapp_levies" name="Mainhouse Setting" action="levies_section_action" parent="member_app.menu_memapp_rec" sequence="20" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
-            
+        <!-- <menuitem id ="menu_memapp_levies" name="Mainhouse Setting" action="levies_section_action" parent="member_app.menu_memapp_rec" sequence="20" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
+             -->
 
 </data>
  </odoo>

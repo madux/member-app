@@ -1,9 +1,10 @@
-import member_app
-import suspension_model
-import subscription
-import guest
-import spouse_exclusion
-import reinstatement
-import account_payment
+from . import member_app
+from . import suspension_model
+from . import subscription
+from . import guest
+from . import spouse_exclusion
+from . import reinstatement
+from . import account_payment
 from . import levies_model
 from . import config
+from . import account_invoice
