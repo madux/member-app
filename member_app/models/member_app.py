@@ -16,6 +16,7 @@ TYPE2JOURNAL = {
     'in_refund': 'purchase',
 }
 
+
 class Account_payment(models.Model):
     _inherit = "account.payment"
     _order = "id desc"
@@ -437,6 +438,18 @@ class App_Member(models.Model):
     harmony = fields.Float('Harmony Magazine Fee', default=2000.00, required=True)
     binary_attach_interview = fields.Binary('Attach Upload Report')
     binary_fname_interview = fields.Char('Interview Report')
+    
+    # ################## MEMBER INFORMATION ####################3
+    place_of_work = fields.Char('Name of Work Place')
+    work_place_manager_name = fields.Char('Name of Work Place')
+    email_work = fields.Char('Work Place Email', required=True)
+    address_work = fields.Text('Work Address') 
+    business_address = fields.Text('Business Address') 
+    passport_number = fields.Char('Passport Number')
+    
+    resident_permit = fields.Char('Resident Permit Number')
+    position_holder = fields.Char('Position in Company')
+    
     
     @api.one
     @api.depends('section_duration')
@@ -2045,9 +2058,10 @@ class App_subscription_Line(models.Model):
         res = super(App_subscription_Line, self).write(vals)
         product_price = self.total_cost
 
-        product_search = self.env['product.product'].search([('name', '=', self.name)])
+        product_search = self.env['product.product'].search([('id', '=', self.product_id.id)])
         if product_search:
             product_search.write({'name': self.name,'list_price': product_price})
+           
         else:
             product_id = self.env['product.product'].create({'name': self.name,
                                                 'type': 'service',
@@ -2055,15 +2069,57 @@ class App_subscription_Line(models.Model):
                                                 'list_price': product_price,
                                                 'available_in_pos':False,
                                                 'taxes_id': []})
-            # self.product_id = product_id.id
+            self.product_id = product_id.id
         return res
+    
+    # @api.multi
+    # def unlink(self):
+    #     product_id = self.env['product.product'].search([('name','=ilike',self.name)], limit=1)
+    #     if product_id:
+    #         product_id.unlink()
+    #         return super(App_subscription_Line, self).unlink()
+        
+    # @api.multi
+    # def unlink(self):
+    #     for xec in self:
+    #         product_ids = self.env['product.product'].search([('name','=ilike',xec.name)])
+    #         for rec in product_ids:
+    #             member_ids = self.env['member.app'].search([])
+    #             for mem in member_ids:
+    #                 memb_inv = mem.mapped('invoice_id').filtered(lambda inv_state: inv_state.state == "draft")
+    #                 if memb_inv:
+    #                     inv_lines = memb_inv.mapped('invoice_line_ids').filtered(lambda inv_prod: inv_prod.product_id == rec.id)
+    #                     if inv_lines:
+    #                         memb_inv.unlink()
+    #                     else:
+    #                         raise ValidationError('You cannot delete products in Opened invoice lines. Kindly cancel the invoice and proceed')
+                  
+    #                 else:
+    #                     raise ValidationError('Some Invoices are related to the product you wish to delete. Kindly cancel the invoice and proceed')
+    #             rec.unlink()
+    #             # rec.toggle_active()##rec.active = False
+    #             # xec.active = False
+    #     return super(App_subscription_Line, self).unlink()
     
     @api.multi
     def unlink(self):
-        product_id = self.env['product.product'].search([('name','=ilike',self.name)], limit=1)
-        if product_id:
-            product_id.unlink()
-            return super(App_subscription_Line, self).unlink()
+        for xec in self:
+            product_ids = self.env['product.product'].search([('name','=ilike',xec.name)])
+            for rec in product_ids:
+                # member_ids = self.env['member.app'].search([])
+                # for mem in member_ids:
+                #     memb_inv = mem.mapped('invoice_id').filtered(lambda inv_state: inv_state.state == "draft")
+                #     if memb_inv:
+                #         inv_lines = memb_inv.mapped('invoice_line_ids').filtered(lambda inv_prod: inv_prod.product_id == rec.id)
+                #         if inv_lines:
+                #             memb_inv.unlink()
+                #         else:
+                #             raise ValidationError('You cannot delete products in Opened invoice lines. Kindly cancel the invoice and proceed')
+                  
+                rec.unlink()
+                # rec.toggle_active()##rec.active = False
+                # xec.active = False
+        return super(App_subscription_Line, self).unlink()
 
     
     name = fields.Char('Activity', required=True)
@@ -2082,6 +2138,7 @@ class App_subscription_Line(models.Model):
     special_levy = fields.Float('Special Levy', required=True, default=0.0)
     sub_levy = fields.Float('Subscription Levy', required=True, default=0.0)
     total_cost = fields.Float('Total', compute= "Calculate_Total")
+    active = fields.Boolean('Active', default=True)
     
     @api.one
     @api.depends('entry_price','special_levy','sub_levy','member_price')
@@ -2190,13 +2247,32 @@ class Package_model(models.Model):
                                                 'taxes_id': []})
             self.product_id = product_id.id
         return res
+    # @api.multi
+    # def unlink(self):
+    #     product_id = self.env['product.product'].search([('name','=ilike',self.name)], limit=1)
+    #     if product_id:
+    #         product_id.unlink()
+    #         return super(Package_model, self).unlink()
+
     @api.multi
     def unlink(self):
-        product_id = self.env['product.product'].search([('name','=ilike',self.name)], limit=1)
-        if product_id:
-            product_id.unlink()
-            return super(Package_model, self).unlink()
-
+        try:
+            for xec in self:
+                product_ids = self.env['product.product'].search([('name','=ilike',xec.name)])
+                for rec in product_ids:
+                        # member_ids = self.env['member.app'].search([])
+                        # for mem in member_ids:
+                        #     memb_inv = mem.mapped('invoice_id').filtered(lambda inv_state: inv_state.state == "draft")
+                        #     if memb_inv:
+                        #         memb_inv.unlink()
+                        #     else:
+                        #         raise ValidationError('Some Invoices are related to the product you wish to delete. Kindly cancel the invoice and proceed')
+                    rec.unlink()
+                    # rec.toggle_active()# = False
+                    # rec.active = False
+        except Exception as e:
+            raise ValidationError('Please you cannot delete because {}'.format(e))
+        return super(Package_model, self).unlink()
     
     name = fields.Char('Package Name', required=True)
     product_id = fields.Many2one('product.product', string='Package Product')
@@ -2433,8 +2509,8 @@ class RegisterSpouseMember(models.Model):
                                     copy=False,
                                     track_visibility='always')
     
-    active = fields.Boolean(string='Active', default=True)
-   
+    active = fields.Boolean(string='Active', default=True) 
+        
     @api.one
     @api.depends('spouse_subscription')
     def get_section_member_price(self):
@@ -2511,8 +2587,11 @@ class RegisterSpouseMember(models.Model):
         lists = []
         mem_obj = self.env['member.app']
         membrowse = mem_obj.search([('id', '=', self.sponsor.id)], limit=1)
-        lists.append(self.id)
-        membrowse.write({'depend_name':[(4, lists)]})
+        if membrowse:
+            lists.append(self.id)
+            membrowse.write({'depend_name':[(4, lists)]})
+        else:
+            raise ValidationError('You must Add a sponseor')
 
     @api.model
     def create(self, vals):
@@ -2542,7 +2621,7 @@ class RegisterSpouseMember(models.Model):
                         'image': self.image,
                         'phone':self.phone,
                         'function': self.occupation,
-                        'name': str(self.surname) +' '+ str(self.first_name) +' '+ middle_name,
+                        'name': str(self.surname) +' '+ str(self.first_name)# +' '+ middle_name,
                         'is_member': True,
                         })
         self.partner_id = part.id
@@ -2577,21 +2656,14 @@ class RegisterSpouseMember(models.Model):
         self.write({'product_id': product})
         amount = self.total  #  datas.get('amount', 0.0)
         invoice_list = []
-        branch_id = 0
-        branch = self.env['res.branch']
-        branch_search = branch.search([('name', 'ilike', 'Ikoyi Club Lagos')])
-        if branch_search:
-            branch_id = branch_search[0].id
-
-        else:
-            branch_create = branch.create(
-                {'name': 'Ikoyi Club Lagos', 'company_id': self.env.user.company_id.id or 1})
-            branch_id = branch_create.id
+        branch_id = self.env.user.branch_id.id
+        if not branch_id:
+            raise ValidationError('User does not have a set branch / Section')
+ 
         line_values = {}
         
         invoice = self.env['account.invoice'].create({
-                'partner_id': self.partner_id.id,
-                #  partner.partner_id.property_account_receivable_id.id,
+                'partner_id': self.partner_id.id, 
                 'account_id': self.account_id.id,
                 'fiscal_position_id': self.partner_id.property_account_position_id.id,
                 'branch_id': branch_id
@@ -2601,9 +2673,9 @@ class RegisterSpouseMember(models.Model):
             produce = each.subscription.name
             products = self.env['product.product']
             product_search = products.search(
-            [('name', 'ilike', produce)])
+            [('name', 'ilike', produce)], limit=1)
             if product_search:
-                product = product_search[0].id
+                product = product_search
             else:
                 pro = products.create(
                     {'name': produce, 'membershipx': True, 'list_price':each.total_fee,'taxes_id': []})

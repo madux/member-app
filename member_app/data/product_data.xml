@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<odoo>
-  <data noupdate="1">
+<odoo noupdate="1">
+  <data>
 
    <record model="product.product" id="8014">
     <field name="name">White Form</field>
@@ -19,7 +19,7 @@
     <field name="list_price">500000</field>
     <field name="taxes_id">[]</field>
      <field name="available_in_pos">0</field>
-   
+  
   </record>
 
   <record model="product.product" id="8016">
@@ -79,8 +79,18 @@
    
   </record>
 
- 
-  <record model="subscription.payment" id="4010">
+  <record model="product.product" id="harmony_magazine_id">
+    <field name="name">Harmony Magazine Fee</field>
+    <field name="type">service</field>
+    <field name="membershipx">1</field>
+    <field name="list_price">20000</field>
+    <field name="taxes_id">[]</field>
+    <field name="available_in_pos">0</field>
+   
+  </record>
+
+<!--  
+  <record model="subscription.payment" id="4010" forcecreate="0">
     <field name="name">Golf(Spouse)</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="entry_price">10000</field>
@@ -93,7 +103,7 @@
    
   </record>
 
-  <record model="subscription.payment" id="4011">
+  <record model="subscription.payment" id="4011" forcecreate="0">
     <field name="name">Polo</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="entry_price">10000</field>
@@ -105,7 +115,7 @@
    
   </record>
 
-  <record model="subscription.payment" id="4012">
+  <record model="subscription.payment" id="4012" forcecreate="0">
     <field name="name">Football</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="entry_price">10000</field>
@@ -128,7 +138,7 @@
     
   </record>
 
-    <record model="subscription.payment" id="4014">
+    <record model="subscription.payment" id="4014" forcecreate="0">
     <field name="name">Football(Spouse)</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="entry_price">1000</field>
@@ -139,7 +149,7 @@
     
   </record>
 
-  <record model="subscription.payment" id="4015">
+  <record model="subscription.payment" id="4015" forcecreate="0">
     <field name="name">Swimming(Spouse)</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="entry_price">1000</field>
@@ -151,8 +161,20 @@
    
   </record>
 
-  <record model="subscription.payment" id="4016">
+  <record model="subscription.payment" id="4016" forcecreate="0">
     <field name="name">Swimming</field>
+    <field name="subscription_period">July-Dec 2019</field>
+    <field name="entry_price">1000</field>
+    <field name="member_price">10000</field>
+    <field name="sub_levy">10000</field>
+    <field name="special_levy">10000</field>
+    <field name="total_cost">40000</field>
+    
+   
+  </record>
+ 
+  <record model="subscription.payment" id="4017" forcecreate="1">
+    <field name="name">Ludo</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="entry_price">1000</field>
     <field name="member_price">10000</field>
@@ -165,14 +187,14 @@
  
  
 
-  <record model="package.model" id="5001">
+  <record model="package.model" id="5001" forcecreate="0">
     <field name="name">Library</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="package_cost">10000</field>
   </record>
 
-  <record model="package.model" id="5002">
+  <record model="package.model" id="5002" forcecreate="0">
     <field name="name">Newpapers</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="package_cost">10000</field>
@@ -180,13 +202,13 @@
    
   </record>
 
-  <record model="package.model" id="5003">
+  <record model="package.model" id="5003" forcecreate="0">
     <field name="name">Swimming</field>
     <field name="subscription_period">July-Dec 2019</field>
     <field name="package_cost">10000</field>
    
   </record> 
- 
+  -->
   </data>
 
 

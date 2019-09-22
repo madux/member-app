@@ -52,5 +52,12 @@ class account_payment(models.Model):
             suspend_search.state_payment_inv()
         else:
             pass 
+        
+        domain_spouse = [('invoice_id', 'in', [item.id for item in self.invoice_ids])]
+        spouse_search = self.env['register.spouse.member'].search(domain_spouse)
+        if spouse_search:
+            spouse_search.button_make_confirm()
+        else:
+            pass 
         return res
  

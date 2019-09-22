@@ -390,6 +390,9 @@
                               <field name="medical_status" attrs="{'invisible':[('state', '=', 'draft')]}"/>
                             <field name="medical_desc" placeholder="Medical Description..." attrs="{'invisible': ['|', ('medical_status', '!=', True), ('state', '=', 'draft')]}"/>
                         </page>
+
+                        
+                      
                         <page name="depends_mem" string="Dependants">
                               <field name="depend_name" attrs="{'readonly': [('state','in',['draft','wait','issue_green'])]}" widget="many2many_kanban">
                                  <kanban quick_create="false" create="true" delete="true">
@@ -414,6 +417,26 @@
                                  </kanban>
                                </field>
                         </page>
+
+                        <page name="other_info" string="Other Information" invisible="0">
+                            <group>
+                                <group>
+                                    <field name="place_of_work"/>
+
+                                    <field name="work_place_manager_name"/>
+                                    <field name="email_work"/>
+                                    <field name="address_work"/>
+                                    <field name="business_address"/>
+                                </group>
+                                <group>
+                                    <field name="passport_number"/>
+                                    <field name="position_holder"/>
+                                    <field name="resident_permit"/>
+                                </group>
+                            </group>
+                               
+                        </page>
+
 
                         <page name="member_payment" string="Membership Payments">
                             
@@ -566,10 +589,10 @@
 				 <search string="Search Membership Records">
 
 
-						<field name="partner_id" />
+					   <field name="partner_id" />
                        <field name="identification"/>
-						<field name="state" />
-                        <field name="product_id" />
+					   <field name="state" />
+                       <field name="product_id" />
                         <field name="date_order" />
                          <field name="occupation" />
 
@@ -1011,7 +1034,7 @@
                         </group>
                         <group>
                             <field name="member_price" string = "Subscription"/>
-                              <!-- <field name="mainhouse_price"/> -->
+                             <field name="product_id"/>
                             <field name="entry_price"/>
                             <field name="sub_levy"/>
                              <field name="special_levy"/>
@@ -1033,7 +1056,7 @@
                              <field name="subscription_period" invisible="0"/>
                               <field name="member_price" string = "Subscription"/>
                             <field name="pdate"/>
-                            <!-- <field name="mainhouse_price"/> -->
+                            <field name="product_id"/>
                             <field name="entry_price"/>
                             <field name="sub_levy"/>
                              <field name="special_levy"/>
@@ -1318,12 +1341,19 @@
                
 
         <menuitem id ="menu_memapp_fil_dep" name="Dependants" parent="menu_memapp_all" sequence="3" groups="base.group_system,member_app.manager_member_ikoyi,member_app.membership_officer_ikoyi"/>
-              <menuitem id ="menu_memapp_dep_rec" name="Spouse Inclusion" sequence="1" parent="menu_memapp_fil_dep" action="register_spouse_action"/>
+              <menuitem id ="menu_memapp_dep_rec" name="Spouse Inclusion" invisible="1" sequence="1" parent="menu_memapp_fil_dep" action="register_spouse_action"/>
           
       <menuitem id ="menu_memapp_rec" name="Configuration" sequence="10" parent="menu_memapp_all" groups="base.group_system,member_app.manager_member_ikoyi"/>
 
-       <menuitem name="Membership types" id="membership_type_menu" 
-            parent="menu_memapp_rec" sequence="5" action="action_membership_productsx"/>
+       <!-- <menuitem name="Membership types" id="membership_type_menu" 
+            parent="menu_memapp_rec" sequence="5" action="action_membership_productsx"/> -->
+
+
+        <act_window id="subscription_spouse_section_action" name="Spouse Subscriptions" res_model="spouse.subscription.payment" view_mode="tree,form"/>
+<!--         
+        <menuitem name="Spouses Subscriptions" id="menu_memapp_spouse_sub" parent="menu_memapp_rec" sequence="6" action="subscription_spouse_section_action" /> -->
+
+
 
         <menuitem id ="menu_memapp_conf" name="Payment" sequence="15" parent="menu_memapp_rec" action="payment_action"/>
         <menuitem id ="menu_memapp_sectionconf" name="Sections" sequence="17" parent="menu_memapp_rec" action="subscription_section_action"/>
