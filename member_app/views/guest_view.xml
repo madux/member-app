@@ -88,7 +88,7 @@
                             <field name="address_work" colspan="20" string="Work Address" invisible= "1" required="0"/>
                              <field name="work_place_manager_name" string ="Manager's Name" required="1"/>  
                             <field name="email_work" widget="email" required="1"/>
-                            <field name="binary_attach_letter" filename="binary_fname_letter" attrs="{'required':[('state','in',['wait'])]}" invisible="0"/>
+                            <field name="binary_attach_letter" filename="binary_fname_letter" invisible="0"/>
                             <field name="binary_fname_letter" required="0" invisible="1" />
 
                              
@@ -143,6 +143,9 @@
                             <field name="member_age"/>
                             <field name="date_order"/>
                             <field name="total"/>
+                            <field name="state"/> 
+                            
+
                 </tree>
             </field>
         </record>

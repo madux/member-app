@@ -11,16 +11,19 @@
         <record id="manager_member_ikoyi" model="res.groups">
             <field name="name">Membership Manager</field>
             <field name="category_id" ref="category_ikoyi_member_club"/>
+            <field name="users" eval="[(4, ref('base.user_root'))]"/>
         </record>
 
         <record id="membership_officer_ikoyi" model="res.groups">
             <field name="name">Membership Officer</field>
             <field name="category_id" ref="category_ikoyi_member_club"/>
+            <field name="users" eval="[(4, ref('base.user_root'))]"/>
         </record>
 
         <record id="membership_honour_ikoyi" model="res.groups">
             <field name="name">Honourary Secretary</field>
             <field name="category_id" ref="category_ikoyi_member_club"/>
+            <field name="users" eval="[(4, ref('base.user_root'))]"/>
         </record>
 
         <!--<record id="chairman_ikoyi" model="res.groups">

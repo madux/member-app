@@ -13,6 +13,18 @@ class account_payment(models.Model):
     
     balances = fields.Float('Balance', compute="get_balance")
     amount_to_pay = fields.Float('To pay', compute="get_balance")
+    modes_payment = fields.Selection([
+                                    ('POS', 'POS'),
+                                    ('Cheque', 'Cheque'),
+                                    ('Bank-Draft', 'Bank-Draft'),
+                                    ('Transfer', 'Transfer')],
+                                    'Mode of Payment',
+                                    index=True,
+                                    default='POS',
+                                    required=False,
+                                    readonly=False,
+                                    copy=False,
+                                    track_visibility='always')
     
     @api.one
     @api.depends('amount', 'payment_difference')

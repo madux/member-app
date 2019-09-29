@@ -29,17 +29,13 @@
         'reports/bio_data.xml',
         'reports/print_invoice_receipt.xml',
         'data/crons.xml',
-        'data/product_data.xml',
-        
-        
+        'data/product_data.xml', 
     ],
     'qweb': [
         'static/src/xml/base.xml',
     ],
     'price': 14000.99,
-    'currency': 'USD',
-
-
+    'currency': 'USD', 
     'installable': True,
     'auto_install': False,
 }

@@ -2,7 +2,7 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_id_member,access_namemember,member_app.model_member_app,member_app.manager_member_ikoyi,1,1,1,1
 access_id_member1,access_namemember1,member_app.model_member_app,member_app.membership_officer_ikoyi,1,1,1,0
 access_id_member2,access_namemember2,member_app.model_member_app,base.group_system,1,1,1,1
-access_id_memberall,access_namememberall,member_app.model_member_app,,1,1,1,1
+access_id_memberall,access_namememberall,member_app.model_member_app,,1,1,1,0
 
 access_id_dependant1,access_namedependant1,member_app.model_register_spouse_member,member_app.manager_member_ikoyi,1,1,1,1
 access_id_dependant2,access_namedependant2,member_app.model_register_spouse_member,member_app.membership_officer_ikoyi,1,1,1,0

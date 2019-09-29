@@ -30,6 +30,7 @@ class Account_payment(models.Model):
         string='Bank',
         readonly=False)
 
+
 class App_Member(models.Model):
     _name = "member.app"
     _inherit = ['mail.thread', 'ir.needaction_mixin']
@@ -114,6 +115,11 @@ class App_Member(models.Model):
             partner = str(field6.partner_id.name)
             res.append((field6.id, partner))
         return res
+
+    # @api.onchange('nok')
+    # def get_nok_address(self):
+    #     address = str(self.nok.street +', '+self.nok.city+', '+self.country_id.name)
+    #     self.update({'nok_address_work': address})
 
     @api.onchange('partner_id')
     def _get_state(self):
@@ -227,6 +233,12 @@ class App_Member(models.Model):
     payment_type = fields.Selection([('installment', 'Installment'),
                                      ('outright', 'OutRight Payment')],
                                     "Payment Type")
+    sex = fields.Selection([('Male', 'Male'),
+                                     ('Female', 'Female')],"Sex")
+    marital_status = fields.Selection([('Single', 'Single'),
+                                     ('Married', 'Married')],
+                                    "Marital Status")
+    nok_relationship = fields.Char("NOK Relationship")
 
     #  CALCULATE MMBER SUBSCRIPTION
     total = fields.Integer(
@@ -441,14 +453,16 @@ class App_Member(models.Model):
     
     # ################## MEMBER INFORMATION ####################3
     place_of_work = fields.Char('Name of Work Place')
-    work_place_manager_name = fields.Char('Name of Work Place')
-    email_work = fields.Char('Work Place Email', required=True)
+    work_place_manager_name = fields.Char('Manager')
+    email_work = fields.Char('Work Place Email', required=False)
     address_work = fields.Text('Work Address') 
     business_address = fields.Text('Business Address') 
     passport_number = fields.Char('Passport Number')
+    nationality = fields.Many2one('res.country', 'Country')
     
     resident_permit = fields.Char('Resident Permit Number')
     position_holder = fields.Char('Position in Company')
+    nok_address_work = fields.Text('Next of Kin Address') 
     
     
     @api.one
@@ -1196,10 +1210,10 @@ class App_Member(models.Model):
 
     @api.multi
     def function_sendall_interview(self):  #  state wait
-        for rec in self:
-            search_id = self.env['member.app'].search([('state', '=', "wait")])
-            rec.write({'state': 'interview'})
-            self.send_mail_set_interview()
+        search_id = self.env['member.app'].search([('state', '=', "wait")])
+        for rec in search_id:
+            search_id.write({'state': 'interview'})
+            search_id.send_mail_set_interview()
 
     @api.multi
     def send_mail_set_interview(self, force=False):
@@ -1246,11 +1260,11 @@ class App_Member(models.Model):
         
     @api.multi
     def button_confirmall_green(self):
-        search_id = self.env['member.app'].search(
-            [('state', 'in', "issue_green")])
-        for mem in search_id:
-            mem.write({'payment_status': 'issue', 'state': 'green'})
-            self.send_mail_issue_green()
+        search_id = self.env['member.app'].search([('state', '=', "issue_green")])
+        if search_id:
+            for mem in search_id:
+                mem.write({'payment_status': 'issue', 'state': 'green'})
+                mem.send_mail_issue_green()
 
     @api.multi
     def check_green_delay(self):
@@ -1395,39 +1409,66 @@ class App_Member(models.Model):
     #                         "Please Enter Temporarily ID")
     @api.one
     def button_make_induction(self):
-        self.write({'state': "induction"})
-        
+        self.write({'state': "induction"}) 
 
     @api.multi
-    def button_make_induction2(self):
-        self.write({'state': "induction"})
-        
     def send_mail_allinduction(self, force=False):
         email_from = self.env.user.company_id.email
-        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
-        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
-        extra = self.email
+        mail_to = self.email
+        subject = "Ikoyi Club Induction Notification"
         bodyx = "Dear Sir/Madam, </br>We wish to notify that you have been enlisted for induction on the date: {} </br>\
              Thanks".format(fields.Datetime.now())
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
+        self.mail_sending_one(email_from, mail_to, bodyx, subject)
+        
+    def mail_sending_one(self, email_from, mail_to, bodyx, subject):
+        for order in self:
+            mail_tos = str(mail_to)
+            email_froms = "Ikoyi Club " + " <" + str(email_from) + ">"
+            subject = subject
+            mail_data = {
+                'email_from': email_froms,
+                'subject': subject,
+                'email_to': mail_tos,
+                #  'email_cc':,#  + (','.join(str(extra)),
+                'reply_to': email_from,
+                'body_html': bodyx
+            }
+            mail_id = order.env['mail.mail'].create(mail_data)
+            order.env['mail.mail'].send(mail_id)
 
+    # def send_mail_allinduction(self, force=False):
+    #     email_from = self.env.user.company_id.email
+    #     group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
+    #     # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
+    #     extra = self.email
+    #     bodyx = "Dear Sir/Madam, </br>We wish to notify that you have been enlisted for induction on the date: {} </br>\
+    #          Thanks".format(fields.Datetime.now())
+    #     self.mail_sending(email_from, group_user_id, extra, bodyx)
+     
+    @api.multi
+    def button_make_induction2(self):    
+        members = self.env['member.app'].search([('state','=', 'temp')])
+        if members:
+            for vals in members:
+                vals.write({'state': 'induction'})
+                vals.send_mail_allinduction()
     @api.multi
     def action_send_induction(self):    
         members = self.env['member.app'].search([('state','=', 'temp')])
-        for vals in members:
-            emails = vals.send_mail_allinduction()
-        return True
-
+        if members:
+            for vals in members:
+                vals.send_mail_allinduction()
+                 
+     
     @api.multi
     def send_mail_induction(self, force=False):
         email_from = self.env.user.company_id.email
-        group_user_id = self.env.ref('member_app.manager_member_ikoyi').id
-        # extra = self.env.ref('ikoyi_module.inventory_officer_ikoyi').id
-        extra = self.email
+        mail_to = self.email
+        subject = "Ikoyi Club Induction Notification"
         bodyx = "Dear Sir/Madam, </br>We wish to notify that you have been enlisted for induction on the date: {} </br>\
              Thanks".format(fields.Datetime.now())
-        self.mail_sending(email_from, group_user_id, extra, bodyx)
-
+        self.mail_sending_one(email_from, mail_to, bodyx, subject)
+        
     @api.multi
     def make_ordinary_or_junior(self):
         # partner = self.partner_id.name[:1]
@@ -2409,7 +2450,7 @@ class RegisterSpouseMember(models.Model):
         "resized as a 64x64px image, with aspect ratio preserved. "
         "Use this field anywhere a small image is required.")
     partner_id = fields.Many2one(
-        'res.partner', 'Name', domain=[
+        'res.partner', 'Full Name', domain=[
             ('is_member', '=', True)])
     
     surname = fields.Char(string='Surname', required=True)
@@ -2425,6 +2466,13 @@ class RegisterSpouseMember(models.Model):
     email = fields.Char('Email', store=True)
     occupation = fields.Char('Job title')
     nok = fields.Many2one('res.partner', 'Next of Kin', store=True)
+    sex = fields.Selection([('Male', 'Male'),
+                                     ('Female', 'Female')],"Sex")
+    nok_relationship = fields.Char("NOK Relationship")
+    marital_status = fields.Selection([('Single', 'Single'),
+                                     ('Married', 'Married')],
+                                    "Marital Status")
+
     title = fields.Many2one('res.partner.title', 'Title', store=True)
     sponsor = fields.Many2one(
         'member.app',
@@ -2501,7 +2549,7 @@ class RegisterSpouseMember(models.Model):
                                      ('Spouse',
                                       'Spouse'),
                                      ],
-                                    'Status',
+                                    'Relationship',
                                     default='Spouse',
                                     index=True,
                                     required=True,
@@ -2621,7 +2669,7 @@ class RegisterSpouseMember(models.Model):
                         'image': self.image,
                         'phone':self.phone,
                         'function': self.occupation,
-                        'name': str(self.surname) +' '+ str(self.first_name)# +' '+ middle_name,
+                        'name': str(self.surname) +' '+ str(self.first_name),# +' '+ middle_name,
                         'is_member': True,
                         })
         self.partner_id = part.id
